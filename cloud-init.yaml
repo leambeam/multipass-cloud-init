@@ -1,0 +1,17 @@
+#cloud-config
+
+users:
+- name: ubuntu
+  ssh_authorized_keys: []
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+packages:
+- apt: [avahi-daemon]
+
+runcmd:
+- [systemctl, enable, ufw]
+- [ufw, enable]
+- [ufw, allow, from, 192.168.0.0/16]
+- [systemctl, enable, avahi-daemon]
