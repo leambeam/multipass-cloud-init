@@ -16,6 +16,12 @@ readonly key_name="id_ed25519"                      # SSH private key filename
 # Defaults
 disk="5G"                                      # default Multipass VM disk size, can be overridden interactively
 memory="1G"                                    # default Multipass VM memory size, can be overridden interactively
+readonly disk_cap_mib=40000                              
+readonly memory_cap_mib=4000
+readonly disk_min=512
+readonly memory_min=128
+readonly disk_label="disk_size"
+readonly memory_label="memory_allocation"
 
 # Runtime values                
 rand_num="$RANDOM"                                  # suffix used when the requested VM/key directory name is taken
@@ -49,16 +55,19 @@ append_cloud_init() {
     sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$pub_key]|" "$cloud_init_path"
 }
 
+
 ask_size() {
     local label=$1
     local default_value=$2
-    local disk_cap=40000
-    local memory_cap=4000
+    local cap=$3
+    local min=$4
+    local message="(min: $min, default: $default_value, max: $(( cap / 1000 ))G)" # Pipe to "bc" if there is a need to set a decimal disk/memory cap 
     local input
     local input_mb
 
     while true; do
-        read -r -p "How much $label do you want to allocate (default: $default_value)? " input
+
+        read -r -p "How much \"$label\" do you want to allocate $message? " input
 
         if [[ -z "$input" ]]; then
             echo "$default_value"
@@ -66,7 +75,7 @@ ask_size() {
         fi
 
         if ! [[ "$input" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
-            echo "Invalid format. Use: 10M or 5G"
+            echo "Invalid format. Use: 1000M or 5G" >&2
             continue
         fi
 
@@ -76,16 +85,16 @@ ask_size() {
             input_mb=$(echo "${input%M}" | bc)
         fi
 
-        if [[ "$label" == "disk_space" && $(echo "$input_mb > $disk_cap" | bc) -eq 1 ]]; then
-            echo "To prevent accidents, the max allowed disk size is 40 GiBs"
+        if (( "$input_mb" > "$cap" )); then
+            echo "Exceeds the max allowed $label $cap MiB. Try a smaller value." >&2
             continue
         fi
 
-        if [[ "$label" == "memory" && $(echo "$input_mb > $memory_cap" | bc) -eq 1 ]]; then
-            echo "To prevent accidents, the max allowed memory allocation is 4 GiBs"
+        if (( "$input_mb" < "$min" )); then
+            echo "Less than min allowed $label $min MiB. Try a larger value." >&2
             continue
         fi
-        
+
         echo "$input"
         return
     done
@@ -126,8 +135,10 @@ mkdir "$full_path"
 generate_keys "$key_path"
 append_cloud_init "$key_path"
  
-disk=$(ask_size "disk_space" "$disk")
-memory=$(ask_size "memory" "$memory") 
+
+disk=$(ask_size $disk_label "$disk" "$disk_cap_mib" "$disk_min")
+memory=$(ask_size $memory_label "$memory" "$memory_cap_mib" "$memory_min") 
+
 
 
 multipass launch --name "$name" --disk "$disk" --memory "$memory" --cloud-init "$cloud_init_path"
