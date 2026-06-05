@@ -18,8 +18,8 @@ disk="5G"                                      # default Multipass VM disk size,
 memory="1G"                                    # default Multipass VM memory size, can be overridden interactively
 readonly disk_cap_mib=40000                              
 readonly memory_cap_mib=4000
-readonly disk_min=512
-readonly memory_min=128
+readonly disk_min=512                          # Minimal value allowed by Multipass
+readonly memory_min=128                        # Minimal value allowed by Multipass
 readonly disk_label="disk_size"
 readonly memory_label="memory_allocation"
 
@@ -34,6 +34,11 @@ name=${1:-}                                         # requested VM name; may get
 # full_path="${ssh_path}/${name}"          # SSH key directory for this VM
 # key_path="${full_path}/${key_name}"      # private key path
 # cloud_init_path="cloud-init-$name.yaml"  # generated cloud-init file in the current directory
+
+die() {
+  echo "${1}" >&2
+  exit 1
+}
 
 # Generate SSH key pair with no passphrase
 # Globals: key_type
@@ -75,7 +80,7 @@ ask_size() {
         fi
 
         if ! [[ "$input" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
-            echo "Invalid format. Use: 1000M or 5G" >&2
+            echo "Invalid format. Use: 1000M or 5G." >&2
             continue
         fi
 
@@ -86,12 +91,12 @@ ask_size() {
         fi
 
         if (( "$input_mb" > "$cap" )); then
-            echo "Exceeds the max allowed $label $cap MiB. Try a smaller value." >&2
+            echo "Exceeds the max allowed $label $cap M. Try a smaller value." >&2
             continue
         fi
 
         if (( "$input_mb" < "$min" )); then
-            echo "Less than min allowed $label $min MiB. Try a larger value." >&2
+            echo "Less than min allowed $label $min M. Try a larger value." >&2
             continue
         fi
 
@@ -102,14 +107,12 @@ ask_size() {
 
 # Check if the VM name was provided
 if [[ -z "$name" ]]; then
-    echo "Usage: $0 <vm-name>"
-    exit 1
+    die "Usage: $0 <vm-name>."
 fi
 
 # Check if the SSH key base path exists
 if [[ ! -d "$ssh_path" ]]; then
-    echo "SSH key base path \"$ssh_path\" does not exist"
-    exit 1
+    die "Failed to access key base path at \"$ssh_path\"."
 fi
 
 # If the VM name or key directory is already taken, choose a shared new name.
@@ -118,6 +121,7 @@ if multipass list | awk '{print $1}' | grep -Fxq -- "$name" || [[ -d "${ssh_path
     name="${name}-${rand_num}"
 fi
 
+# TODO: Identify and export variables needed for the mp-delete script
 full_path="${ssh_path}/${name}"
 key_path="${full_path}/${key_name}"
 cloud_init_path="cloud-init-$name.yaml"
@@ -127,17 +131,16 @@ if [[ -f "$cloud_init_template" ]]; then
     echo "Found the cloud-init template. Copying it"
     cp "$cloud_init_template" "$cloud_init_path"
 else
-    echo "Didn't find the template file at \"$cloud_init_template\". Exiting."
-    exit 1
+    die "Failed to find cloud-init template at \"$cloud_init_template\"."
 fi
 
-mkdir "$full_path"
-generate_keys "$key_path"
-append_cloud_init "$key_path"
+mkdir "$full_path" || die "Failed to create directory: \"$full_path\"."
+generate_keys "$key_path" || die "Failed to generate key pair at \"$key_path\"."
+append_cloud_init "$key_path" || die "Failed to append cloud init: \"$cloud_init_path\"."
  
 
-disk=$(ask_size $disk_label "$disk" "$disk_cap_mib" "$disk_min")
-memory=$(ask_size $memory_label "$memory" "$memory_cap_mib" "$memory_min") 
+disk=$(ask_size "$disk_label" "$disk" "$disk_cap_mib" "$disk_min")
+memory=$(ask_size "$memory_label" "$memory" "$memory_cap_mib" "$memory_min")
 
 
 
@@ -161,5 +164,6 @@ multipass launch --name "$name" --disk "$disk" --memory "$memory" --cloud-init "
 #                                         launched instance, in 'Home'.
 
    
+# TODO: wait until multipass is ready with a timeout and fail after a few attempts 
 
 # ssh -i "$key_path" "ubuntu@$name.local"
