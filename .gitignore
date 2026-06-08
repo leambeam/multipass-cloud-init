@@ -1,3 +1,4 @@
 .DS_Store
 test
-cloud-init-test.yaml
+cloud-init-*.yaml
+mp-launch-*.sh
