@@ -142,28 +142,24 @@ append_cloud_init "$key_path" || die "Failed to append cloud init: \"$cloud_init
 disk=$(ask_size "$disk_label" "$disk" "$disk_cap_mib" "$disk_min")
 memory=$(ask_size "$memory_label" "$memory" "$memory_cap_mib" "$memory_min")
 
-
+# TODO: Add case statement with multiple Ubuntu versions
+# TODO: Add logic for setting CPUs in `multipass launch`
 
 multipass launch --name "$name" --disk "$disk" --memory "$memory" --cloud-init "$cloud_init_path"
 
+max_attempts=5
 
+for (( attempt = 1; attempt <= max_attempts; attempt++ )); do      
+    read -r vm_status vm_ip < <(multipass list | awk -v name="$name" '$1 == name {print $2, $3}')
+    if [[ "$vm_status" == "Running" && -n "$vm_ip" ]]; then
+        # Uses IP instead of the hostname as `ssh-keyscan` takes long time to fail on non-existing hostnames.
+        if ssh-keyscan -T 1 "$vm_ip" &> /dev/null; then
+            # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
+            ssh -i "$key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$name.local"
+            exit 0
+        fi
+    fi
+    sleep 3
+done
 
-
-#   -d, --disk <disk>                     Disk space to allocate. Positive
-#                                         integers, in bytes, or decimals, with K,
-#                                         M, G suffix.
-#                                         Minimum: 512M, default: 5G.
-#   -m, --memory <memory>                 Amount of memory to allocate. Positive
-#                                         integers, in bytes, or decimals, with K,
-#                                         M, G suffix.
-#                                         Minimum: 128M, default: 1G.
-#   -n, --name <name>                     Name for the instance. If it is
-#                                         'primary' (the configured primary
-#                                         instance name), the user's home
-#                                         directory is mounted inside the newly
-#                                         launched instance, in 'Home'.
-
-   
-# TODO: wait until multipass is ready with a timeout and fail after a few attempts 
-
-# ssh -i "$key_path" "ubuntu@$name.local"
+die "Failed to connect to \"$name\" after $max_attempts attempts."
