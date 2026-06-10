@@ -2,3 +2,4 @@
 test
 cloud-init-*.yaml
 mp-launch-*.sh
+script-test
