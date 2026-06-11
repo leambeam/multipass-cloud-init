@@ -12,6 +12,7 @@ readonly ssh_path="test"                            # base directory for SSH key
 readonly cloud_init_template="cloud-init.yaml"      # path to the cloud-init template copied per VM
 readonly key_type="ed25519"                         # ssh-keygen key type
 readonly key_name="id_ed25519"                      # SSH private key filename
+readonly env_file="/tmp/shared_vars.env"
 
 # Defaults
 disk="5G"                                      # default Multipass VM disk size, can be overridden interactively
@@ -121,7 +122,6 @@ if multipass list | awk '{print $1}' | grep -Fxq -- "$name" || [[ -d "${ssh_path
     name="${name}-${rand_num}"
 fi
 
-# TODO: Identify and export variables needed for the mp-delete script
 full_path="${ssh_path}/${name}"
 key_path="${full_path}/${key_name}"
 cloud_init_path="cloud-init-$name.yaml"
@@ -137,10 +137,12 @@ fi
 mkdir "$full_path" || die "Failed to create directory: \"$full_path\"."
 generate_keys "$key_path" || die "Failed to generate key pair at \"$key_path\"."
 append_cloud_init "$key_path" || die "Failed to append cloud init: \"$cloud_init_path\"."
- 
 
 disk=$(ask_size "$disk_label" "$disk" "$disk_cap_mib" "$disk_min")
 memory=$(ask_size "$memory_label" "$memory" "$memory_cap_mib" "$memory_min")
+
+# Write variables and their values to the temporary env file sourced by the 'mp-delete.sh'
+declare -p full_path cloud_init_path name > "$env_file"
 
 # TODO: Add case statement with multiple Ubuntu versions
 # TODO: Add logic for setting CPUs in `multipass launch`
@@ -152,7 +154,7 @@ max_attempts=5
 for (( attempt = 1; attempt <= max_attempts; attempt++ )); do      
     read -r vm_status vm_ip < <(multipass list | awk -v name="$name" '$1 == name {print $2, $3}')
     if [[ "$vm_status" == "Running" && -n "$vm_ip" ]]; then
-        # Uses IP instead of the hostname as `ssh-keyscan` takes long time to fail on non-existing hostnames.
+        # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
         if ssh-keyscan -T 1 "$vm_ip" &> /dev/null; then
             # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
             ssh -i "$key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$name.local"
