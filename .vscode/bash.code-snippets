@@ -1,0 +1,15 @@
+{
+    "bash shebang": {
+        "prefix": "shebang",
+        "body": "#!/usr/bin/env bash",
+        "scope": "shellscript",
+        "description": "Bash shebang"
+    },
+
+    "bash strict mode": {
+        "prefix": "flags",
+        "body": "set -euo pipefail",
+        "scope": "shellscript",
+        "description": "Bash strict mode"
+    }
+}
