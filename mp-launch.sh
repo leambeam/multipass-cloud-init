@@ -17,6 +17,8 @@ readonly env_file="/tmp/shared_vars.env"
 # Defaults
 disk="5G"                                      # default Multipass VM disk size, can be overridden interactively
 memory="1G"                                    # default Multipass VM memory size, can be overridden interactively
+image="24.04"
+
 readonly disk_cap_mib=40000                              
 readonly memory_cap_mib=4000
 readonly disk_min=512                          # Minimal value allowed by Multipass
@@ -106,6 +108,45 @@ ask_size() {
     done
 }
 
+ask_image() {
+    local default_image=$1
+    local selected_image
+    local choice
+
+    while true; do
+
+cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: image=$(ask_image)
+    Choose Ubuntu image:
+    1) 22.04 LTS
+    2) 24.04 LTS
+    3) 25.10
+    4) 26.04 LTS
+EOF
+
+        read -r -p "Which image do you want to use (default: $default_image): " choice
+    
+        case "$choice" in
+            1) selected_image="22.04";;
+            2) selected_image="24.04";;
+            3) selected_image="25.10";;
+            4) selected_image="26.04";;
+           "") selected_image="$default_image";; # use default on empty input
+            *)
+                echo "Invalid choice. Enter 1, 2, 3, or 4." >&2
+                continue 
+				;;
+        esac
+
+		# 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
+        if [[ $(multipass find "$selected_image" --only-images) != *"No images"* ]] ; then
+            echo "$selected_image"
+            return 0
+        fi
+
+		echo "Ubuntu image \"$selected_image\" was not found by multipass. Choose another image" >&2
+    done
+}
+
 # Check if the VM name was provided
 if [[ -z "$name" ]]; then
     die "Usage: $0 <vm-name>."
@@ -140,14 +181,14 @@ append_cloud_init "$key_path" || die "Failed to append cloud init: \"$cloud_init
 
 disk=$(ask_size "$disk_label" "$disk" "$disk_cap_mib" "$disk_min")
 memory=$(ask_size "$memory_label" "$memory" "$memory_cap_mib" "$memory_min")
+image=$(ask_image "$image")
 
 # Write variables and their values to the temporary env file sourced by the 'mp-delete.sh'
 declare -p full_path cloud_init_path name > "$env_file"
 
-# TODO: Add case statement with multiple Ubuntu versions
 # TODO: Add logic for setting CPUs in `multipass launch`
 
-multipass launch --name "$name" --disk "$disk" --memory "$memory" --cloud-init "$cloud_init_path"
+multipass launch "$image" --name "$name" --disk "$disk" --memory "$memory" --cloud-init "$cloud_init_path"
 
 max_attempts=5
 
