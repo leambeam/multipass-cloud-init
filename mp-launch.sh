@@ -7,36 +7,37 @@
 set -x # debug
 
 # Configuration
-# path="$HOME/.ssh/keys"
-readonly ssh_path="test"                            # base directory for SSH key directories
-readonly cloud_init_template="cloud-init.yaml"      # path to the cloud-init template copied per VM
-readonly key_type="ed25519"                         # ssh-keygen key type
-readonly key_name="id_ed25519"                      # SSH private key filename
-readonly env_file="/tmp/shared_vars.env"
+# ssh_key_base="$HOME/.ssh/keys"
+readonly ssh_key_base="test"                         # base directory for SSH key directories
+readonly cloud_init_template_path="cloud-init.yaml"       # path to the cloud-init template copied per VM
+readonly ssh_key_type="ed25519"                          # ssh-keygen key type
+readonly ssh_key_name="id_ed25519"                   # SSH private key filename
+
 
 # Defaults
-disk="5G"                                      # default Multipass VM disk size, can be overridden interactively
-memory="1G"                                    # default Multipass VM memory size, can be overridden interactively
-image="24.04"
+readonly default_disk_size="5G"                         # default Multipass VM disk size
+readonly default_memory_size="1G"                       # default Multipass VM memory size
+readonly default_ubuntu_image="24.04"
 
-readonly disk_cap_mib=40000                              
-readonly memory_cap_mib=4000
-readonly disk_min=512                          # Minimal value allowed by Multipass
-readonly memory_min=128                        # Minimal value allowed by Multipass
-readonly disk_label="disk_size"
-readonly memory_label="memory_allocation"
+readonly disk_max_mib=40000
+readonly memory_max_mib=4000
+readonly disk_min_mib=512                                # minimal value allowed by Multipass
+readonly memory_min_mib=128                              # minimal value allowed by Multipass
+readonly disk_prompt_label="disk_size"
+readonly memory_prompt_label="memory_allocation"
 
 # Runtime values                
-rand_num="$RANDOM"                                  # suffix used when the requested VM/key directory name is taken
-name=${1:-}                                         # requested VM name; may get a random suffix if already taken
+readonly random_suffix="$RANDOM"                         # suffix used when the requested VM/key directory name is taken
+vm_name=${1:-}                                          # requested VM name; may get a random suffix if already taken
 
 # Runtime paths
 # Assigned after the final VM name is decided, so the VM, key directory,
 # and generated cloud-init file all share the same name.
 #
-# full_path="${ssh_path}/${name}"          # SSH key directory for this VM
-# key_path="${full_path}/${key_name}"      # private key path
-# cloud_init_path="cloud-init-$name.yaml"  # generated cloud-init file in the current directory
+# vm_key_dir="${ssh_key_base}/${vm_name}"                         # SSH key directory for this VM
+# private_key_path="${vm_key_dir}/${ssh_key_name}"                # private key path
+# generated_cloud_init_path="cloud-init-$vm_name.yaml"                # generated cloud-init file in the current directory
+
 
 die() {
   echo "${1}" >&2
@@ -44,78 +45,78 @@ die() {
 }
 
 # Generate SSH key pair with no passphrase
-# Globals: key_type
-# Arguments: key_path
+# Globals: ssh_key_type
+# Arguments: target_private_key_path
 generate_keys() {
-    local key_path=$1
-    ssh-keygen -t "$key_type" -f "$key_path" -N ""
+    local target_private_key_path=$1
+    ssh-keygen -t "$ssh_key_type" -f "$target_private_key_path" -N ""
 }
 
 # Add the generated public key to the copied cloud-init file.
-# Globals: cloud_init_path
-# Arguments: key_path
+# Globals: generated_cloud_init_path
+# Arguments: target_private_key_path
 append_cloud_init() {
-    local key_path=$1
-    local pub_key_path="${key_path}.pub"
-    local pub_key
-    pub_key=$(cat "$pub_key_path")
+    local target_private_key_path=$1
+    local public_key_path="${target_private_key_path}.pub"
+    local public_key
+    public_key=$(cat "$public_key_path")
 
-    sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$pub_key]|" "$cloud_init_path"
+    sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
 
 ask_size() {
-    local label=$1
+    local prompt_label=$1
     local default_value=$2
-    local cap=$3
-    local min=$4
-    local message="(min: $min, default: $default_value, max: $(( cap / 1000 ))G)" # Pipe to "bc" if there is a need to set a decimal disk/memory cap 
-    local input
-    local input_mb
+    local max_mib=$3
+    local min_mib=$4
+    local limits_message="(min: $min_mib, default: $default_value, max: $(( max_mib / 1000 ))G)" # Pipe to "bc" if there is a need to set a decimal disk/memory cap
+    local requested_size
+    local requested_size_mib
 
     while true; do
 
-        read -r -p "How much \"$label\" do you want to allocate $message? " input
+        read -r -p "How much \"$prompt_label\" do you want to allocate $limits_message? " requested_size
 
-        if [[ -z "$input" ]]; then
+        if [[ -z "$requested_size" ]]; then
             echo "$default_value"
             return
         fi
 
-        if ! [[ "$input" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
+        if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
             echo "Invalid format. Use: 1000M or 5G." >&2
             continue
         fi
 
-        if [[ "$input" == *G ]]; then
-            input_mb=$(echo "scale=0; ${input%G} * 1000" | bc)
+        if [[ "$requested_size" == *G ]]; then
+            requested_size_mib=$(echo "scale=0; ${requested_size%G} * 1000" | bc)
         else
-            input_mb=$(echo "${input%M}" | bc)
+            requested_size_mib=$(echo "${requested_size%M}" | bc)
         fi
 
-        if (( "$input_mb" > "$cap" )); then
-            echo "Exceeds the max allowed $label $cap M. Try a smaller value." >&2
+        if (( "$requested_size_mib" > "$max_mib" )); then
+            echo "Exceeds the max allowed $prompt_label $max_mib M. Try a smaller value." >&2
             continue
         fi
 
-        if (( "$input_mb" < "$min" )); then
-            echo "Less than min allowed $label $min M. Try a larger value." >&2
+        if (( "$requested_size_mib" < "$min_mib" )); then
+            echo "Less than min allowed $prompt_label $min_mib M. Try a larger value." >&2
             continue
         fi
 
-        echo "$input"
+        echo "$requested_size"
         return
     done
 }
 
 ask_image() {
-    local default_image=$1
-    local selected_image
-    local choice
+    local default_image_value=$1
+    local selected_ubuntu_image
+    local image_choice
 
     while true; do
 
-cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: image=$(ask_image)
+cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
     Choose Ubuntu image:
     1) 22.04 LTS
     2) 24.04 LTS
@@ -123,86 +124,87 @@ cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: image=$(
     4) 26.04 LTS
 EOF
 
-        read -r -p "Which image do you want to use (default: $default_image): " choice
+        read -r -p "Which image do you want to use (default: $default_image_value): " image_choice
     
-        case "$choice" in
-            1) selected_image="22.04";;
-            2) selected_image="24.04";;
-            3) selected_image="25.10";;
-            4) selected_image="26.04";;
-           "") selected_image="$default_image";; # use default on empty input
+        case "$image_choice" in
+            1) selected_ubuntu_image="22.04";;
+            2) selected_ubuntu_image="24.04";;
+            3) selected_ubuntu_image="25.10";;
+            4) selected_ubuntu_image="26.04";;
+           "") selected_ubuntu_image="$default_image_value";; # use default on empty input
             *)
                 echo "Invalid choice. Enter 1, 2, 3, or 4." >&2
-                continue 
-				;;
+                continue
+                ;;
         esac
 
-		# 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
-        if [[ $(multipass find "$selected_image" --only-images) != *"No images"* ]] ; then
-            echo "$selected_image"
+        # 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
+        if [[ $(multipass find "$selected_ubuntu_image" --only-images) != *"No images"* ]] ; then
+            echo "$selected_ubuntu_image"
             return 0
         fi
 
-		echo "Ubuntu image \"$selected_image\" was not found by multipass. Choose another image" >&2
+        echo "Ubuntu image \"$selected_ubuntu_image\" was not found by multipass. Choose another image." >&2
     done
 }
 
 # Check if the VM name was provided
-if [[ -z "$name" ]]; then
+if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
 fi
 
 # Check if the SSH key base path exists
-if [[ ! -d "$ssh_path" ]]; then
-    die "Failed to access key base path at \"$ssh_path\"."
+if [[ ! -d "$ssh_key_base" ]]; then
+    die "Failed to access key base path at \"$ssh_key_base\"."
 fi
 
 # If the VM name or key directory is already taken, choose a shared new name.
-if multipass list | awk '{print $1}' | grep -Fxq -- "$name" || [[ -d "${ssh_path}/${name}" ]]; then
-    echo "VM name or key directory \"$name\" already exists. Appending a random number."
-    name="${name}-${rand_num}"
+if multipass list | awk '{print $1}' | grep -Fxq -- "$vm_name" || [[ -d "${ssh_key_base}/${vm_name}" ]]; then
+    echo "VM name or key directory \"$vm_name\" already exists. Appending a random number."
+    vm_name="${vm_name}-${random_suffix}"
 fi
 
-full_path="${ssh_path}/${name}"
-key_path="${full_path}/${key_name}"
-cloud_init_path="cloud-init-$name.yaml"
+vm_key_dir="${ssh_key_base}/${vm_name}"
+private_key_path="${vm_key_dir}/${ssh_key_name}"
+generated_cloud_init_path="cloud-init-$vm_name.yaml"
+state_file="multipass-variables-$vm_name.env"
 
 # Check if the template exists and copy it
-if [[ -f "$cloud_init_template" ]]; then
+if [[ -f "$cloud_init_template_path" ]]; then
     echo "Found the cloud-init template. Copying it"
-    cp "$cloud_init_template" "$cloud_init_path"
+    cp "$cloud_init_template_path" "$generated_cloud_init_path"
 else
-    die "Failed to find cloud-init template at \"$cloud_init_template\"."
+    die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
 fi
 
-mkdir "$full_path" || die "Failed to create directory: \"$full_path\"."
-generate_keys "$key_path" || die "Failed to generate key pair at \"$key_path\"."
-append_cloud_init "$key_path" || die "Failed to append cloud init: \"$cloud_init_path\"."
+mkdir "$vm_key_dir" || die "Failed to create directory: \"$vm_key_dir\"."
+generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
+append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
-disk=$(ask_size "$disk_label" "$disk" "$disk_cap_mib" "$disk_min")
-memory=$(ask_size "$memory_label" "$memory" "$memory_cap_mib" "$memory_min")
-image=$(ask_image "$image")
+disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
+memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
+ubuntu_image=$(ask_image "$default_ubuntu_image")
 
-# Write variables and their values to the temporary env file sourced by the 'mp-delete.sh'
-declare -p full_path cloud_init_path name > "$env_file"
+# Write variables and their values to the temporary state file sourced by the 'mp-delete.sh'
+declare -p vm_key_dir generated_cloud_init_path vm_name > "$state_file"
 
 # TODO: Add logic for setting CPUs in `multipass launch`
 
-multipass launch "$image" --name "$name" --disk "$disk" --memory "$memory" --cloud-init "$cloud_init_path"
+multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cloud-init "$generated_cloud_init_path"
 
-max_attempts=5
+readonly ssh_max_attempts=5
 
-for (( attempt = 1; attempt <= max_attempts; attempt++ )); do      
-    read -r vm_status vm_ip < <(multipass list | awk -v name="$name" '$1 == name {print $2, $3}')
-    if [[ "$vm_status" == "Running" && -n "$vm_ip" ]]; then
+for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
+    read -r current_vm_status current_vm_ip < <(multipass list | awk -v vm_name="$vm_name" '$1 == vm_name {print $2, $3}')
+    if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
         # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
-        if ssh-keyscan -T 1 "$vm_ip" &> /dev/null; then
+        if ssh-keyscan -T 1 "$current_vm_ip" &> /dev/null; then
             # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
-            ssh -i "$key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$name.local"
+            ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"
             exit 0
         fi
     fi
     sleep 3
 done
 
-die "Failed to connect to \"$name\" after $max_attempts attempts."
+die "Failed to connect to \"$vm_name\" after $ssh_max_attempts attempts."
