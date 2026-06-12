@@ -6,6 +6,8 @@
 
 set -x # debug
 
+# TODO: Go through all the variables again
+
 # Configuration
 # ssh_key_base="$HOME/.ssh/keys"
 readonly ssh_key_base="test"                         # base directory for SSH key directories
@@ -18,11 +20,13 @@ readonly ssh_key_name="id_ed25519"                   # SSH private key filename
 readonly default_disk_size="5G"                         # default Multipass VM disk size
 readonly default_memory_size="1G"                       # default Multipass VM memory size
 readonly default_ubuntu_image="24.04"
+readonly default_cpu_count=1                    # default and and minimum cpu allocation
 
 readonly disk_max_mib=40000
 readonly memory_max_mib=4000
 readonly disk_min_mib=512                                # minimal value allowed by Multipass
 readonly memory_min_mib=128                              # minimal value allowed by Multipass
+readonly cpu_max_count=4
 readonly disk_prompt_label="disk_size"
 readonly memory_prompt_label="memory_allocation"
 
@@ -43,6 +47,9 @@ die() {
   echo "${1}" >&2
   exit 1
 }
+
+# TODO: Refactor the functions (evaluate the use of local variables and switch to global in some cases)
+# TODO: Add comments with clear arguments, globals, and locals
 
 # Generate SSH key pair with no passphrase
 # Globals: ssh_key_type
@@ -148,6 +155,42 @@ EOF
     done
 }
 
+ask_cpu() {
+    local default_cpus=$1
+    local max_cpus=$2
+    local min_cpus=$default_cpus
+    local requested_cpus
+
+    while true; do
+
+        read -r -p "How many CPUs do you want to allocate (min: $min_cpus, default: $default_cpus, max: $max_cpus)? " requested_cpus
+
+        if [[ -z "$requested_cpus" ]]; then
+            echo "$default_cpus"
+            return
+        fi
+
+        if ! [[ "$requested_cpus" =~ ^[0-9]+$ ]]; then
+            echo "Invalid format. Use a whole number, for example: 2." >&2
+            continue
+        fi
+
+        if (( "$requested_cpus" > "$max_cpus" )); then
+            echo "Exceeds the max allowed CPU allocation $max_cpus. Try a smaller value." >&2
+            continue
+        fi
+
+        if (( "$requested_cpus" < "$min_cpus" )); then
+            echo "Less than min allowed CPU allocation $min_cpus. Try a larger value." >&2
+            continue
+        fi
+
+        echo "$requested_cpus"
+        return
+
+    done
+}
+
 # Check if the VM name was provided
 if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
@@ -167,7 +210,7 @@ fi
 vm_key_dir="${ssh_key_base}/${vm_name}"
 private_key_path="${vm_key_dir}/${ssh_key_name}"
 generated_cloud_init_path="cloud-init-$vm_name.yaml"
-state_file="multipass-variables-$vm_name.env"
+state_file="tmp/multipass-variables-$vm_name.env"
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then
@@ -181,16 +224,18 @@ mkdir "$vm_key_dir" || die "Failed to create directory: \"$vm_key_dir\"."
 generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
 append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
+
+# TODO: Check the order of execution
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
 ubuntu_image=$(ask_image "$default_ubuntu_image")
+cpus=$(ask_cpu "$default_cpu_count" "$cpu_max_count")
 
 # Write variables and their values to the temporary state file sourced by the 'mp-delete.sh'
+# TODO: Change the path of the state file
 declare -p vm_key_dir generated_cloud_init_path vm_name > "$state_file"
 
-# TODO: Add logic for setting CPUs in `multipass launch`
-
-multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cloud-init "$generated_cloud_init_path"
+multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
 readonly ssh_max_attempts=5
 
