@@ -224,11 +224,9 @@ mkdir "$vm_key_dir" || die "Failed to create directory: \"$vm_key_dir\"."
 generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
 append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
-
-# TODO: Check the order of execution
+ubuntu_image=$(ask_image "$default_ubuntu_image")
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
-ubuntu_image=$(ask_image "$default_ubuntu_image")
 cpus=$(ask_cpu "$default_cpu_count" "$cpu_max_count")
 
 # Write variables and their values to the temporary state file sourced by the 'mp-delete.sh'
