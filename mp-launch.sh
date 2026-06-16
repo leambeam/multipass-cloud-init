@@ -210,7 +210,6 @@ fi
 vm_key_dir="${ssh_key_base}/${vm_name}"
 private_key_path="${vm_key_dir}/${ssh_key_name}"
 generated_cloud_init_path="cloud-init-$vm_name.yaml"
-state_file="tmp/multipass-variables-$vm_name.env"
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then
@@ -228,10 +227,6 @@ ubuntu_image=$(ask_image "$default_ubuntu_image")
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
 cpus=$(ask_cpu "$default_cpu_count" "$cpu_max_count")
-
-# Write variables and their values to the temporary state file sourced by the 'mp-delete.sh'
-# TODO: Change the path of the state file
-declare -p vm_key_dir generated_cloud_init_path vm_name > "$state_file"
 
 multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 

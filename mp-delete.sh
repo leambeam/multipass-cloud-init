@@ -2,33 +2,43 @@
 
 set -euo pipefail
 
-readonly env_file="/tmp/shared_vars.env"
+vm_not_found() {
+    while true; do
+        read -r -p "VM \"$vm_name\" not found on Multipass. Delete any associated local files? (y/n): " answer
+        case "$answer" in
+        y) break ;;
+        n) exit 1 ;;
+        *) echo "Invalid choice. Use either y or n." >&2 ;;
+        esac
+    done
+}
 
-if [[ ! -f $env_file ]]; then
-	echo "Failed to locate the env file \"$env_file\"."
-	exit 1
+vm_name=${1:-}
+
+if [[ -z "$vm_name" ]]; then
+    echo "Usage: $0 <vm-name>" >&2
+    exit 1
 fi
 
-# Ignore that the file doesn't exist at the moment of the lint
-# shellcheck disable=SC1090
-source "$env_file"
+readonly ssh_key_base="test"
+readonly vm_key_dir="${ssh_key_base}/${vm_name}"
+readonly generated_cloud_init_path="cloud-init-$vm_name.yaml"
 
-if [[ -n "$full_path" ]]; then
-	echo "Removing $full_path"
-	rm -r "$full_path"
+if multipass info "$vm_name" &> /dev/null; then
+    echo "Deleting \"$vm_name\"..."
+    multipass delete "$vm_name" --purge
+else
+    vm_not_found
 fi
 
-if [[ -n "$cloud_init_path" ]]; then
-	echo "Removing $cloud_init_path"
-	rm "$cloud_init_path"
+ssh-keygen -R "${vm_name}.local"
+
+if [[ -d "$vm_key_dir" ]]; then
+    echo "Removing $vm_key_dir"
+    rm -r "$vm_key_dir"
 fi
 
-if [[ -n "$name" ]]; then
-	ssh-keygen -R "${name}.local"
-	multipass stop "$name"
-	multipass delete "$name"
-	multipass purge
+if [[ -f "$generated_cloud_init_path" ]]; then
+    echo "Removing $generated_cloud_init_path"
+    rm "$generated_cloud_init_path"
 fi
-
-rm "$env_file"
-
