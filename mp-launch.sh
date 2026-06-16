@@ -202,7 +202,7 @@ if [[ ! -d "$ssh_key_base" ]]; then
 fi
 
 # If the VM name or key directory is already taken, choose a shared new name.
-if multipass list | awk '{print $1}' | grep -Fxq -- "$vm_name" || [[ -d "${ssh_key_base}/${vm_name}" ]]; then
+if multipass info "$vm_name" &> /dev/null || [[ -d "${ssh_key_base}/${vm_name}" ]]; then
     echo "VM name or key directory \"$vm_name\" already exists. Appending a random number."
     vm_name="${vm_name}-${random_suffix}"
 fi
