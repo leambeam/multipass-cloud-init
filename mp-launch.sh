@@ -8,10 +8,15 @@ set -x # debug
 
 # TODO: Go through all the variables again
 
+# Absolute path of directory containing the executed script
+# https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
+
 # Configuration
 # ssh_key_base="$HOME/.ssh/keys"
-readonly ssh_key_base="test"                         # base directory for SSH key directories
-readonly cloud_init_template_path="cloud-init.yaml"       # path to the cloud-init template copied per VM
+readonly ssh_key_base="${script_dir}/test"                         # base directory for SSH key directories
+readonly cloud_init_template_path="${script_dir}/cloud-init.yaml"       # path to the cloud-init template copied per VM
 readonly ssh_key_type="ed25519"                          # ssh-keygen key type
 readonly ssh_key_name="id_ed25519"                   # SSH private key filename
 
@@ -40,7 +45,7 @@ vm_name=${1:-}                                          # requested VM name; may
 #
 # vm_key_dir="${ssh_key_base}/${vm_name}"                         # SSH key directory for this VM
 # private_key_path="${vm_key_dir}/${ssh_key_name}"                # private key path
-# generated_cloud_init_path="cloud-init-$vm_name.yaml"                # generated cloud-init file in the current directory
+# generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"                # generated cloud-init file
 
 
 die() {
@@ -209,7 +214,7 @@ fi
 
 vm_key_dir="${ssh_key_base}/${vm_name}"
 private_key_path="${vm_key_dir}/${ssh_key_name}"
-generated_cloud_init_path="cloud-init-$vm_name.yaml"
+generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then

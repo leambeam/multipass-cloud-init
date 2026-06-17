@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
+# TODO: Add the functionality to handle multiple VMs at once
+
 set -euo pipefail
+
+# Absolute path of directory containing the executed script
+# https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
 vm_not_found() {
     while true; do
@@ -20,9 +27,9 @@ if [[ -z "$vm_name" ]]; then
     exit 1
 fi
 
-readonly ssh_key_base="test"
+readonly ssh_key_base="${script_dir}/test"
 readonly vm_key_dir="${ssh_key_base}/${vm_name}"
-readonly generated_cloud_init_path="cloud-init-$vm_name.yaml"
+readonly generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"
 
 if multipass info "$vm_name" &> /dev/null; then
     echo "Deleting \"$vm_name\"..."
