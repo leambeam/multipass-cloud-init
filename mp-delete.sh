@@ -27,9 +27,10 @@ if [[ -z "$vm_name" ]]; then
     exit 1
 fi
 
-readonly ssh_key_base="${script_dir}/test"
-readonly vm_key_dir="${ssh_key_base}/${vm_name}"
-readonly generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"
+readonly ssh_base="${script_dir}/ssh"
+readonly cloud_init_base="${script_dir}/cloud-init" 
+readonly vm_key_dir="${ssh_base}/${vm_name}"
+readonly generated_cloud_init_path="${cloud_init_base}/cloud-init-$vm_name.yaml"
 
 if multipass info "$vm_name" &> /dev/null; then
     echo "Deleting \"$vm_name\"..."

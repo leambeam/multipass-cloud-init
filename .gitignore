@@ -1,5 +1,4 @@
 .DS_Store
-test
-cloud-init-*.yaml
-mp-launch-*.sh
 script-test
+ssh
+cloud-init
