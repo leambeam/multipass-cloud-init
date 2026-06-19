@@ -13,12 +13,15 @@ set -x # debug
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-# Configuration
+# Base directories
 readonly ssh_base="${script_dir}/ssh"                                   # base directory for SSH key directories
 readonly cloud_init_base="${script_dir}/cloud-init"                     # directory for generated cloud-init files
 readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
 
+# File paths
+readonly ssh_config_path="${ssh_base}/config"
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
+
 readonly ssh_key_type="ed25519"                                         # ssh-keygen key type
 readonly ssh_key_name="id_ed25519"                                      # SSH private key filename
 
@@ -26,7 +29,7 @@ readonly ssh_key_name="id_ed25519"                                      # SSH pr
 readonly default_disk_size="5G"                         # default Multipass VM disk size
 readonly default_memory_size="1G"                       # default Multipass VM memory size
 readonly default_ubuntu_image="24.04"
-readonly default_cpu_count=1                    # default and and minimum cpu allocation
+readonly default_cpu_count=1                            # default and and minimum cpu allocation
 
 readonly disk_max_mib=40000
 readonly memory_max_mib=4000
@@ -221,6 +224,18 @@ if [[ -f "$cloud_init_template_path" ]]; then
     cp "$cloud_init_template_path" "$generated_cloud_init_path"
 else
     die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
+fi
+
+# Check if the 'ssh config' entry with such Host exists, if not, append the config.
+if ! awk -v name="$vm_name" '$1=="Host" && $2==name {f=1} END{exit !f}' "$ssh_config_path" &>/dev/null; then
+cat <<EOF >> "$ssh_config_path"
+Host ${vm_name}
+    HostName ${vm_name}.local
+    IdentityFile ${private_key_path}
+    User ubuntu
+    Port 22
+
+EOF
 fi
 
 mkdir "$vm_key_dir" || die "Failed to create directory: \"$vm_key_dir\"."
