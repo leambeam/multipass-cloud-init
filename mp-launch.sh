@@ -202,6 +202,8 @@ ask_cpu() {
 # Check if the VM name was provided
 if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
+elif [[ "$vm_name" == [0-9]* ]]; then
+    die "The first character of the <vm-name> can't be a number."
 fi
 
 # Create /ssh and /cloud-init or fail gracefully (exit 0)
