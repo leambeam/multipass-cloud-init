@@ -27,7 +27,7 @@ delete() {
     # Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
     # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0.
     for vm in "$@"; do
-        local vm_key_dir="${ssh_base}/${vm}"
+        local vm_dir="${ssh_base}/${vm}"
         local generated_cloud_init_path="${cloud_init_base}/cloud-init-$vm.yaml"
 
         if multipass info "$vm" &>/dev/null; then
@@ -39,9 +39,9 @@ delete() {
 
         ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from known hosts." >&2
 
-        if [[ -d "$vm_key_dir" ]]; then
-            echo "Removing $vm_key_dir"
-            rm -r "$vm_key_dir" || echo "Failed to remove \"$vm_key_dir\"." >&2
+        if [[ -d "$vm_dir" ]]; then
+            echo "Removing $vm_dir"
+            rm -r "$vm_dir" || echo "Failed to remove \"$vm_dir\"." >&2
         fi
 
         if [[ -f "$generated_cloud_init_path" ]]; then

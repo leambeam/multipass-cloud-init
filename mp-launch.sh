@@ -19,7 +19,6 @@ readonly cloud_init_base="${script_dir}/cloud-init"                     # direct
 readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
 
 # File paths
-readonly ssh_config_path="${ssh_base}/config"
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
 
 readonly ssh_key_type="ed25519"                                         # ssh-keygen key type
@@ -214,9 +213,10 @@ if multipass info "$vm_name" &> /dev/null || [[ -d "${ssh_base}/${vm_name}" ]]; 
     vm_name="${vm_name}-${random_suffix}"
 fi
 
-vm_key_dir="${ssh_base}/${vm_name}"
-private_key_path="${vm_key_dir}/${ssh_key_name}"
+vm_dir="${ssh_base}/${vm_name}"
+private_key_path="${vm_dir}/${ssh_key_name}"
 generated_cloud_init_path="${cloud_init_base}/cloud-init-$vm_name.yaml"
+ssh_config_path="${vm_dir}/config"
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then
@@ -226,21 +226,19 @@ else
     die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
 fi
 
-# Check if the 'ssh config' entry with such Host exists, if not, append the config.
-if ! awk -v name="$vm_name" '$1=="Host" && $2==name {f=1} END{exit !f}' "$ssh_config_path" &>/dev/null; then
-cat <<EOF >> "$ssh_config_path"
+mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
+generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
+append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
+
+if [[ ! -f "$ssh_config_path" ]]; then
+cat <<EOF > "$ssh_config_path"
 Host ${vm_name}
     HostName ${vm_name}.local
     IdentityFile ${private_key_path}
     User ubuntu
     Port 22
-
 EOF
 fi
-
-mkdir "$vm_key_dir" || die "Failed to create directory: \"$vm_key_dir\"."
-generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
-append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
 ubuntu_image=$(ask_image "$default_ubuntu_image")
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
