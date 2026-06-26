@@ -202,8 +202,10 @@ ask_cpu() {
 # Check if the VM name was provided
 if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
-elif [[ "$vm_name" == [0-9]* ]]; then
-    die "The first character of the <vm-name> can't be a number."
+# Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
+# Name format per Multipass documentation: https://documentation.ubuntu.com/multipass/latest/reference/instance-name-format/
+elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
+    die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
 fi
 
 # Create /ssh and /cloud-init or fail gracefully (exit 0)
