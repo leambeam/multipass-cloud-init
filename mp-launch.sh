@@ -56,18 +56,7 @@ die() {
   exit 1
 }
 
-# TODO: Refactor the functions (evaluate the use of local variables and switch to global in some cases)
-# TODO: Add comments with clear arguments, globals, and locals
-
-# Generate SSH key pair with no passphrase
-# Globals: ssh_key_type
-# Arguments: target_private_key_path
-generate_keys() {
-    local target_private_key_path=$1
-    ssh-keygen -t "$ssh_key_type" -f "$target_private_key_path" -N ""
-}
-
-# Add the generated public key to the copied cloud-init file.
+# Add the generated public key to the copied cloud-init file
 # Globals: generated_cloud_init_path
 # Arguments: target_private_key_path
 append_cloud_init() {
@@ -79,7 +68,9 @@ append_cloud_init() {
     sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
-
+# Prompt for either disk or memory size allocation
+# Globals: none
+# Arguments: prompt_label, default_value, max_mib, min_mib
 ask_size() {
     local prompt_label=$1
     local default_value=$2
@@ -124,8 +115,10 @@ ask_size() {
     done
 }
 
+# Prompt for an image to use in the VM
+# Globals: default_ubuntu_image
+# Arguments: none
 ask_image() {
-    local default_image_value=$1
     local selected_ubuntu_image
     local image_choice
 
@@ -139,14 +132,14 @@ cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_i
     4) 26.04 LTS
 EOF
 
-        read -r -p "Which image do you want to use (default: $default_image_value): " image_choice
+        read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
     
         case "$image_choice" in
             1) selected_ubuntu_image="22.04";;
             2) selected_ubuntu_image="24.04";;
             3) selected_ubuntu_image="25.10";;
             4) selected_ubuntu_image="26.04";;
-           "") selected_ubuntu_image="$default_image_value";; # use default on empty input
+           "") selected_ubuntu_image="$default_ubuntu_image";; # use default on empty input
             *)
                 echo "Invalid choice. Enter 1, 2, 3, or 4." >&2
                 continue
@@ -163,18 +156,18 @@ EOF
     done
 }
 
+# Prompt for a cpu allocation in the VM
+# Globals: cpu_max_count, default_cpu_count
+# Arguments: none
 ask_cpu() {
-    local default_cpus=$1
-    local max_cpus=$2
-    local min_cpus=$default_cpus
     local requested_cpus
 
     while true; do
 
-        read -r -p "How many CPUs do you want to allocate (min: $min_cpus, default: $default_cpus, max: $max_cpus)? " requested_cpus
+        read -r -p "How many CPUs do you want to allocate (min: $default_cpu_count, default: $default_cpu_count, max: $cpu_max_count)? " requested_cpus
 
         if [[ -z "$requested_cpus" ]]; then
-            echo "$default_cpus"
+            echo "$default_cpu_count"
             return
         fi
 
@@ -183,13 +176,13 @@ ask_cpu() {
             continue
         fi
 
-        if (( "$requested_cpus" > "$max_cpus" )); then
-            echo "Exceeds the max allowed CPU allocation $max_cpus. Try a smaller value." >&2
+        if (( "$requested_cpus" > "$cpu_max_count" )); then
+            echo "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value." >&2
             continue
         fi
 
-        if (( "$requested_cpus" < "$min_cpus" )); then
-            echo "Less than min allowed CPU allocation $min_cpus. Try a larger value." >&2
+        if (( "$requested_cpus" < "$default_cpu_count" )); then
+            echo "Less than min allowed CPU allocation $default_cpu_count. Try a larger value." >&2
             continue
         fi
 
@@ -231,7 +224,7 @@ else
 fi
 
 mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
-generate_keys "$private_key_path" || die "Failed to generate key pair at \"$private_key_path\"."
+ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
 append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
 if [[ ! -f "$ssh_config_path" ]]; then
@@ -244,10 +237,10 @@ Host ${vm_name}
 EOF
 fi
 
-ubuntu_image=$(ask_image "$default_ubuntu_image")
+ubuntu_image=$(ask_image)
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
-cpus=$(ask_cpu "$default_cpu_count" "$cpu_max_count")
+cpus=$(ask_cpu)
 
 multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
