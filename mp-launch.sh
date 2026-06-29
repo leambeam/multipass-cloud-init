@@ -6,8 +6,6 @@
 
 set -x # debug
 
-# TODO: Go through all the variables again
-
 # Absolute path of directory containing the executed script
 # https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,13 +26,16 @@ readonly ssh_key_name="id_ed25519"                                      # SSH pr
 readonly default_disk_size="5G"                         # default Multipass VM disk size
 readonly default_memory_size="1G"                       # default Multipass VM memory size
 readonly default_ubuntu_image="24.04"
-readonly default_cpu_count=1                            # default and and minimum cpu allocation
+readonly default_cpu_count=1                            # default cpu allocation
 
 readonly disk_max_mib=40000
 readonly memory_max_mib=4000
+readonly cpu_max_count=4
+
 readonly disk_min_mib=512                                # minimal value allowed by Multipass
 readonly memory_min_mib=128                              # minimal value allowed by Multipass
-readonly cpu_max_count=4
+readonly cpu_min_count=1                                 # minimum cpu allocation
+
 readonly disk_prompt_label="disk_size"
 readonly memory_prompt_label="memory_allocation"
 
@@ -157,14 +158,14 @@ EOF
 }
 
 # Prompt for a cpu allocation in the VM
-# Globals: cpu_max_count, default_cpu_count
+# Globals: cpu_min_count, default_cpu_count, cpu_max_count
 # Arguments: none
 ask_cpu() {
     local requested_cpus
 
     while true; do
 
-        read -r -p "How many CPUs do you want to allocate (min: $default_cpu_count, default: $default_cpu_count, max: $cpu_max_count)? " requested_cpus
+        read -r -p "How many CPUs do you want to allocate (min: $cpu_min_count, default: $default_cpu_count, max: $cpu_max_count)? " requested_cpus
 
         if [[ -z "$requested_cpus" ]]; then
             echo "$default_cpu_count"
@@ -181,8 +182,8 @@ ask_cpu() {
             continue
         fi
 
-        if (( "$requested_cpus" < "$default_cpu_count" )); then
-            echo "Less than min allowed CPU allocation $default_cpu_count. Try a larger value." >&2
+        if (( "$requested_cpus" < "$cpu_min_count" )); then
+            echo "Less than min allowed CPU allocation $cpu_min_count. Try a larger value." >&2
             continue
         fi
 
