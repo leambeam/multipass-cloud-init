@@ -202,6 +202,11 @@ elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
     die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
 fi
 
+ubuntu_image=$(ask_image)
+disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
+memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
+cpus=$(ask_cpu)
+
 # Create /ssh and /cloud-init or fail gracefully (exit 0)
 mkdir -p "$ssh_base" "$cloud_init_base"
 
@@ -237,11 +242,6 @@ Host ${vm_name}
     Port 22
 EOF
 fi
-
-ubuntu_image=$(ask_image)
-disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
-memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
-cpus=$(ask_cpu)
 
 multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
