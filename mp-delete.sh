@@ -7,8 +7,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly ssh_base="${script_dir}/ssh"
-readonly cloud_init_base="${script_dir}/cloud-init"
+readonly vms_base="${script_dir}/vms"
 
 vm_not_found() {
     local vm=$1
@@ -27,9 +26,8 @@ delete() {
     # Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
     # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0.
     for vm in "$@"; do
-        local vm_dir="${ssh_base}/${vm}"
-        local generated_cloud_init_path="${cloud_init_base}/cloud-init-$vm.yaml"
-
+        local vm_dir="${vms_base}/${vm}"
+        
         if multipass info "$vm" &>/dev/null; then
             echo "Deleting \"$vm\"..."
             multipass delete "$vm" --purge || echo "Failed to delete \"$vm\" from Multipass." >&2
@@ -42,11 +40,6 @@ delete() {
         if [[ -d "$vm_dir" ]]; then
             echo "Removing $vm_dir"
             rm -r "$vm_dir" || echo "Failed to remove \"$vm_dir\"." >&2
-        fi
-
-        if [[ -f "$generated_cloud_init_path" ]]; then
-            echo "Removing $generated_cloud_init_path"
-            rm "$generated_cloud_init_path" || echo "Failed to remove  \"$generated_cloud_init_path\"." >&2
         fi
     done
 }

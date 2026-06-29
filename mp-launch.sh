@@ -12,8 +12,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
 # Base directories
-readonly ssh_base="${script_dir}/ssh"                                   # base directory for SSH key directories
-readonly cloud_init_base="${script_dir}/cloud-init"                     # directory for generated cloud-init files
+readonly vms_base="${script_dir}/vms"                                   
 readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
 
 # File paths
@@ -47,7 +46,6 @@ vm_name=${1:-}                                          # requested VM name; may
 # Assigned after the final VM name is decided, so the VM, key directory,
 # and generated cloud-init file all share the same name.
 #
-# vm_key_dir="${ssh_base}/${vm_name}"                         # SSH key directory for this VM
 # private_key_path="${vm_key_dir}/${ssh_key_name}"                # private key path
 # generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"                # generated cloud-init file
 
@@ -207,19 +205,21 @@ disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
 cpus=$(ask_cpu)
 
-# Create /ssh and /cloud-init or fail gracefully (exit 0)
-mkdir -p "$ssh_base" "$cloud_init_base"
+# Create /vms or fail gracefully (exit 0)
+mkdir -p "$vms_base"
 
 # If the VM name or key directory is already taken, choose a shared new name.
-if multipass info "$vm_name" &> /dev/null || [[ -d "${ssh_base}/${vm_name}" ]]; then
+if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; then
     echo "VM name or key directory \"$vm_name\" already exists. Appending a random number."
     vm_name="${vm_name}-${random_suffix}"
 fi
 
-vm_dir="${ssh_base}/${vm_name}"
+vm_dir="${vms_base}/${vm_name}"
 private_key_path="${vm_dir}/${ssh_key_name}"
-generated_cloud_init_path="${cloud_init_base}/cloud-init-$vm_name.yaml"
+generated_cloud_init_path="${vm_dir}/cloud-init.yaml"
 ssh_config_path="${vm_dir}/config"
+
+mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then
@@ -229,7 +229,6 @@ else
     die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
 fi
 
-mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
 append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
