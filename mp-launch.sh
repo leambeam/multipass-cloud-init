@@ -242,6 +242,13 @@ Host ${vm_name}
 EOF
 fi
 
+# Restrict permissions on SSH-related files and directory
+chmod 700 "$vm_dir"
+chmod 600 "$ssh_config_path"
+chmod 600 "$private_key_path"
+chmod 644 "${private_key_path}.pub"
+chmod 644 "$generated_cloud_init_path"
+
 multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
 readonly ssh_max_attempts=5
