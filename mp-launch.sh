@@ -64,7 +64,12 @@ append_cloud_init() {
     local public_key
     public_key=$(cat "$public_key_path")
 
-    sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
+    # BSD (MacOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
+    case "$OSTYPE" in
+        *darwin*|*bsd*) sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
+        *linux*) sed -i "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
+        *) die "Unsupported OS type" ;;
+    esac
 }
 
 # Prompt for either disk or memory size allocation
