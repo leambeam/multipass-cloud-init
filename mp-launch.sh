@@ -24,7 +24,7 @@ readonly ssh_key_name="id_ed25519"
 # The longer GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
 readonly default_disk_size="5G"                                         # virtual disk
 readonly default_memory_size="1G"                                       # vRAM
-readonly default_ubuntu_image="24.04"                                   # VM image
+readonly default_ubuntu_image="26.04"                                   # VM image
 readonly default_cpu_count=1                                            # vCPUs
 
 # Custom caps
