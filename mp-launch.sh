@@ -11,51 +11,50 @@ set -x # debug
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-# Base directories
-readonly vms_base="${script_dir}/vms"                                   
+readonly vms_base="${script_dir}/vms"                                   # root directory for per-vm directories
 readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
-
-# File paths
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
 
-readonly ssh_key_type="ed25519"                                         # ssh-keygen key type
-readonly ssh_key_name="id_ed25519"                                      # SSH private key filename
+readonly ssh_key_type="ed25519"                                         
+readonly ssh_key_name="id_ed25519"                                      
 
-# Defaults
-readonly default_disk_size="5G"                         # default Multipass VM disk size
-readonly default_memory_size="1G"                       # default Multipass VM memory size
-readonly default_ubuntu_image="24.04"
-readonly default_cpu_count=1                            # default cpu allocation
+# Default values per Multipass 
+# https://documentation.ubuntu.com/multipass/latest/reference/command-line-interface/launch/
+# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as binary units (i.e., powers of 1024: GiB, MiB, and KiB.
+# The longer GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
+readonly default_disk_size="5G"                                         # virtual disk
+readonly default_memory_size="1G"                                       # vRAM
+readonly default_ubuntu_image="24.04"                                   # VM image
+readonly default_cpu_count=1                                            # vCPUs
 
-readonly disk_max_mib=40000
-readonly memory_max_mib=4000
-readonly cpu_max_count=4
+# Custom caps
+readonly disk_max_mib=40000                                             # virtual disk
+readonly memory_max_mib=4000                                            # vRAM
+readonly cpu_max_count=4                                                # vCPUs
 
-readonly disk_min_mib=512                                # minimal value allowed by Multipass
-readonly memory_min_mib=128                              # minimal value allowed by Multipass
-readonly cpu_min_count=1                                 # minimum cpu allocation
+# Minimal values allowed by Multipass. 'multipass launch' will fail if any of these are lowered
+readonly disk_min_mib=512                                               # virtual disk
+readonly memory_min_mib=128                                             # vRAM
+readonly cpu_min_count=1                                                # vCPUs
 
+# Prompts that are used for the user message in the generic ask_size() function
 readonly disk_prompt_label="disk_size"
 readonly memory_prompt_label="memory_allocation"
 
 # Runtime values                
-readonly random_suffix="$RANDOM"                         # suffix used when the requested VM/key directory name is taken
-vm_name=${1:-}                                          # requested VM name; may get a random suffix if already taken
+readonly random_suffix="$RANDOM"                                        # suffix used when the requested VM name is taken
+vm_name=${1:-}                                                          # requested VM name; may get a random suffix if already taken
 
 # Runtime paths
-# Assigned after the final VM name is decided, so the VM, key directory,
-# and generated cloud-init file all share the same name.
-#
-# private_key_path="${vm_key_dir}/${ssh_key_name}"                # private key path
-# generated_cloud_init_path="${script_dir}/cloud-init-$vm_name.yaml"                # generated cloud-init file
-
+# vm_dir, private_key_path, generated_cloud_init_path, and ssh_config_path
+# are declared once the final vm_name is known
 
 die() {
   echo "${1}" >&2
   exit 1
 }
 
-# Add the generated public key to the copied cloud-init file
+# Add the generated SSH public key to the VM's generated cloud-init file
 # Globals: generated_cloud_init_path
 # Arguments: target_private_key_path
 append_cloud_init() {
@@ -64,7 +63,8 @@ append_cloud_init() {
     local public_key
     public_key=$(cat "$public_key_path")
 
-    # BSD (MacOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
+    # TODO: Do OS detection before any mutation
+    # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
     case "$OSTYPE" in
         *darwin*|*bsd*) sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
         *linux*) sed -i "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
@@ -80,7 +80,7 @@ ask_size() {
     local default_value=$2
     local max_mib=$3
     local min_mib=$4
-    local limits_message="(min: $min_mib, default: $default_value, max: $(( max_mib / 1000 ))G)" # Pipe to "bc" if there is a need to set a decimal disk/memory cap
+    local limits_message="(min: $min_mib, default: $default_value, max: $(( max_mib / 1000 ))G)" # Pipe through 'bc' if decimal G caps are ever needed
     local requested_size
     local requested_size_mib
 
@@ -92,7 +92,9 @@ ask_size() {
             echo "$default_value"
             return
         fi
-
+        
+        # TODO: Add 'K' suffix?
+        # Accept integers and decimals with 'M' and 'G' suffixes e.g., 1.5G or 15M
         if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
             echo "Invalid format. Use: 1000M or 5G." >&2
             continue
@@ -196,7 +198,6 @@ ask_cpu() {
     done
 }
 
-# Check if the VM name was provided
 if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
 # Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
@@ -210,7 +211,7 @@ disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "
 memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
 cpus=$(ask_cpu)
 
-# Create /vms or fail gracefully (exit 0)
+# Create /vms idempotently (i.e., do not fail if already exists)
 mkdir -p "$vms_base"
 
 # If the VM name or key directory is already taken, choose a shared new name.
@@ -219,10 +220,10 @@ if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; 
     vm_name="${vm_name}-${random_suffix}"
 fi
 
-vm_dir="${vms_base}/${vm_name}"
-private_key_path="${vm_dir}/${ssh_key_name}"
-generated_cloud_init_path="${vm_dir}/cloud-init.yaml"
-ssh_config_path="${vm_dir}/config"
+vm_dir="${vms_base}/${vm_name}"                                       # per-vm directory storing key pair, SSH config, and VM's generated cloud-init
+private_key_path="${vm_dir}/${ssh_key_name}"                          # path to the private key
+generated_cloud_init_path="${vm_dir}/cloud-init.yaml"                 # path to the VM's generated cloud-init file
+ssh_config_path="${vm_dir}/config"                                    # path to the SSH config
 
 mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 
@@ -237,6 +238,8 @@ fi
 ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
 append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
 
+# TODO: remove?
+# Config file should not exist, but check just in case
 if [[ ! -f "$ssh_config_path" ]]; then
 cat <<EOF > "$ssh_config_path"
 Host ${vm_name}
@@ -247,7 +250,7 @@ Host ${vm_name}
 EOF
 fi
 
-# Restrict permissions on SSH-related files and directory
+# Restrict permissions on VM-related files and directory
 chmod 700 "$vm_dir"
 chmod 600 "$ssh_config_path"
 chmod 600 "$private_key_path"
@@ -259,6 +262,7 @@ multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory 
 readonly ssh_max_attempts=5
 
 for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
+    # Column order per 'multipass list': Name, State, IPv4, Image. May change in future versions
     read -r current_vm_status current_vm_ip < <(multipass list | awk -v vm_name="$vm_name" '$1 == vm_name {print $2, $3}')
     if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
         # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
