@@ -198,6 +198,27 @@ ask_cpu() {
     done
 }
 
+# Check if all required tools are installed 
+# Globals: none
+# Arguments: none
+check_required_tools() {
+    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "awk" "bc")
+    local missing_tools=()
+
+    for tool in "${required_tools[@]}"; do
+        if ! command -v "$tool" &> /dev/null; then
+            missing_tools+=("$tool")
+        fi
+    done
+
+    if (( "${#missing_tools[@]}" > 0 )); then
+        for tool in "${missing_tools[@]}"; do
+            echo "Required tool not found: $tool" >&2
+        done
+        die "Missing dependencies. Install the tools listed above and try again."
+    fi
+}
+
 if [[ -z "$vm_name" ]]; then
     die "Usage: $0 <vm-name>."
 # Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
@@ -205,6 +226,8 @@ if [[ -z "$vm_name" ]]; then
 elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
     die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
 fi
+
+check_required_tools
 
 ubuntu_image=$(ask_image)
 disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
