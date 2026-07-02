@@ -11,5 +11,11 @@
         "body": "set -euo pipefail",
         "scope": "shellscript",
         "description": "Bash strict mode"
+    },
+    "quotes": {
+        "prefix": "quotes",
+        "body": "\\\"\\$\\\"",
+        "scope": "shellscript",
+        "description": "Wrap expanded variable in literal quotes"
     }
 }
