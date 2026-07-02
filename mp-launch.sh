@@ -4,7 +4,9 @@
 # set -o nounset   # abort on unbound variable
 # set -o pipefail  # don't hide errors within pipes
 
-set -x # debug
+# set -x # debug
+
+set -euo pipefail
 
 # Absolute path of directory containing the executed script
 # https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
@@ -38,8 +40,8 @@ readonly memory_min_mib=128                                             # vRAM
 readonly cpu_min_count=1                                                # vCPUs
 
 # Prompts that are used for the user message in the generic ask_size() function
-readonly disk_prompt_label="disk_size"
-readonly memory_prompt_label="memory_allocation"
+readonly disk_prompt_label="disk space"
+readonly memory_prompt_label="memory"
 
 # Runtime values                
 readonly random_suffix="$RANDOM"                                        # suffix used when the requested VM name is taken
@@ -74,13 +76,14 @@ ask_size() {
     local default_value=$2
     local max_mib=$3
     local min_mib=$4
-    local limits_message="(min: $min_mib, default: $default_value, max: $(( max_mib / 1000 ))G)" # Pipe through 'bc' if decimal G caps are ever needed
+    local max_gib=$(echo "scale=2; ${max_mib} / 1000" | bc)
+    local limits_message="(min: ${min_mib}M, default: $default_value, max: ${max_gib}G)"
     local requested_size
     local requested_size_mib
 
     while true; do
 
-        read -r -p "How much \"$prompt_label\" do you want to allocate $limits_message? " requested_size
+        read -r -p "How much $prompt_label do you want to allocate $limits_message? " requested_size
 
         if [[ -z "$requested_size" ]]; then
             echo "$default_value"
@@ -90,7 +93,7 @@ ask_size() {
         # TODO: Add 'K' suffix?
         # Accept integers and decimals with 'M' and 'G' suffixes e.g., 1.5G or 15M
         if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
-            echo "Invalid format. Use: 1000M or 5G." >&2
+            echo "Invalid format: \"$requested_size\". Use: 1000M or 5G." >&2
             continue
         fi
 
@@ -101,12 +104,12 @@ ask_size() {
         fi
 
         if (( "$requested_size_mib" > "$max_mib" )); then
-            echo "Exceeds the max allowed $prompt_label $max_mib M. Try a smaller value." >&2
+            echo "Exceeds the max allowed $prompt_label ${max_gib}G. Try a smaller value." >&2
             continue
         fi
 
         if (( "$requested_size_mib" < "$min_mib" )); then
-            echo "Less than min allowed $prompt_label $min_mib M. Try a larger value." >&2
+            echo "Less than min allowed $prompt_label ${max_gib}G. Try a larger value." >&2
             continue
         fi
 
@@ -125,11 +128,11 @@ ask_image() {
     while true; do
 
 cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
-    Choose Ubuntu image:
-    1) 22.04 LTS
-    2) 24.04 LTS
-    3) 25.10
-    4) 26.04 LTS
+Choose Ubuntu image:
+1) 22.04 LTS
+2) 24.04 LTS
+3) 25.10
+4) 26.04 LTS 
 EOF
 
         read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
@@ -141,7 +144,7 @@ EOF
             4) selected_ubuntu_image="26.04";;
            "") selected_ubuntu_image="$default_ubuntu_image";; # use default on empty input
             *)
-                echo "Invalid choice. Enter 1, 2, 3, or 4." >&2
+                echo "Invalid choice: \"$image_choice\". Enter 1, 2, 3, or 4." >&2
                 continue
                 ;;
         esac
@@ -152,7 +155,7 @@ EOF
             return 0
         fi
 
-        echo "Ubuntu image \"$selected_ubuntu_image\" was not found by multipass. Choose another image." >&2
+        echo "Multipass could not find Ubuntu image \"$selected_ubuntu_image\". Choose another image." >&2
     done
 }
 
@@ -172,7 +175,7 @@ ask_cpu() {
         fi
 
         if ! [[ "$requested_cpus" =~ ^[0-9]+$ ]]; then
-            echo "Invalid format. Use a whole number, for example: 2." >&2
+            echo "Invalid format: \"$requested_cpus\" Use a whole number (e.g. 2)." >&2
             continue
         fi
 
@@ -242,8 +245,9 @@ mkdir -p "$vms_base"
 
 # If the VM name or key directory is already taken, choose a shared new name.
 if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; then
-    echo "VM name or key directory \"$vm_name\" already exists. Appending a random number."
+    echo "VM name or directory \"$vm_name\" already exists. Appending a random number."
     vm_name="${vm_name}-${random_suffix}"
+    echo "The new VM name is: \"$vm_name\"."
 fi
 
 vm_dir="${vms_base}/${vm_name}"                                       # per-vm directory storing key pair, SSH config, and VM's generated cloud-init
@@ -255,14 +259,14 @@ mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 
 # Check if the template exists and copy it
 if [[ -f "$cloud_init_template_path" ]]; then
-    echo "Found the cloud-init template. Copying it"
+    echo "Found the cloud-init template. Copying it."
     cp "$cloud_init_template_path" "$generated_cloud_init_path"
 else
     die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
 fi
 
 ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
-append_cloud_init "$private_key_path" || die "Failed to append cloud init: \"$generated_cloud_init_path\"."
+append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
 # TODO: remove?
 # Config file should not exist, but check just in case
