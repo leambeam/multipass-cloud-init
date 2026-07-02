@@ -55,21 +55,15 @@ die() {
 }
 
 # Add the generated SSH public key to the VM's generated cloud-init file
-# Globals: generated_cloud_init_path
+# Globals: generated_cloud_init_path, sed_flag
 # Arguments: target_private_key_path
 append_cloud_init() {
     local target_private_key_path=$1
     local public_key_path="${target_private_key_path}.pub"
     local public_key
     public_key=$(cat "$public_key_path")
-
-    # TODO: Do OS detection before any mutation
-    # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
-    case "$OSTYPE" in
-        *darwin*|*bsd*) sed -i "" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
-        *linux*) sed -i "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path";;
-        *) die "Unsupported OS type" ;;
-    esac
+    
+    sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
 # Prompt for either disk or memory size allocation
@@ -226,6 +220,15 @@ if [[ -z "$vm_name" ]]; then
 elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
     die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
 fi
+
+# BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
+# Arrays are used here as it is the safest way to store commands with arguments
+case "$OSTYPE" in
+    *darwin*|*bsd*) sed_flag=(-i "");;
+    *linux*) sed_flag=(-i);;
+    *) die "Unsupported OS type" ;;
+esac
+readonly sed_flag
 
 check_required_tools
 
