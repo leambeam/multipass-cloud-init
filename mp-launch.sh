@@ -4,7 +4,7 @@
 # set -o nounset   # abort on unbound variable
 # set -o pipefail  # don't hide errors within pipes
 
-# set -x # debug
+set -x # debug
 
 set -euo pipefail
 
@@ -22,16 +22,20 @@ readonly ssh_key_name="id_ed25519"
 
 # Default values per Multipass 
 # https://documentation.ubuntu.com/multipass/latest/reference/command-line-interface/launch/
-# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as binary units (i.e., powers of 1024: GiB, MiB, and KiB.
-# The longer GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
+# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as binary units (i.e., powers of 1024: GiB, MiB, and KiB).
+# The longer KB/MB/GB and GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
 readonly default_disk_size="5G"                                         # virtual disk
 readonly default_memory_size="1G"                                       # vRAM
 readonly default_ubuntu_image="26.04"                                   # VM image
 readonly default_cpu_count=1                                            # vCPUs
 
 # Custom caps
-readonly disk_max_mib=40000                                             # virtual disk
-readonly memory_max_mib=4000                                            # vRAM
+# https://canonical.com/multipass/docs/latest/reference/settings/local-instance-name-disk/
+# KiB, KB, or K, to designate 1024 bytes
+# MiB, MB, or M, to designate 1024 x 1024 = 1048576 bytes
+# GiB, GB, or G, to designate 1024 x 1024 x 1024 = 1073741824 bytes
+readonly disk_max_mib=40960                                             # virtual disk --> 40 GiB * 1024 = 40960 MiB
+readonly memory_max_mib=4096                                            # vRAM --> 4 GiB * 1024 = 4096 MiB
 readonly cpu_max_count=4                                                # vCPUs
 
 # Minimal values allowed by Multipass. 'multipass launch' will fail if any of these are lowered
@@ -76,7 +80,7 @@ ask_size() {
     local default_value=$2
     local max_mib=$3
     local min_mib=$4
-    local max_gib=$(echo "scale=2; ${max_mib} / 1000" | bc)
+    local max_gib=$(echo "scale=2; ${max_mib} / 1024" | bc)
     local limits_message="(min: ${min_mib}M, default: $default_value, max: ${max_gib}G)"
     local requested_size
     local requested_size_mib
@@ -98,21 +102,23 @@ ask_size() {
         fi
 
         if [[ "$requested_size" == *G ]]; then
-            requested_size_mib=$(echo "scale=0; ${requested_size%G} * 1000" | bc)
+            requested_size_mib=$(echo "scale=2; ${requested_size%G} * 1024" | bc)
         else
             requested_size_mib=$(echo "${requested_size%M}" | bc)
         fi
-
-        if (( "$requested_size_mib" > "$max_mib" )); then
+        
+        # Pipe to 'bc' to allow decimal comparison
+        if (( $(echo "$requested_size_mib > $max_mib" | bc -l) )); then
             echo "Exceeds the max allowed $prompt_label ${max_gib}G. Try a smaller value." >&2
             continue
         fi
-
-        if (( "$requested_size_mib" < "$min_mib" )); then
+        
+        # Pipe to 'bc' to allow decimal comparison
+        if (( $(echo "$requested_size_mib < $min_mib" | bc -l) )); then
             echo "Less than min allowed $prompt_label ${max_gib}G. Try a larger value." >&2
             continue
         fi
-
+        
         echo "$requested_size"
         return
     done
