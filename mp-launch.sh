@@ -22,7 +22,7 @@ readonly ssh_key_name="id_ed25519"
 
 # Default values per Multipass 
 # https://documentation.ubuntu.com/multipass/latest/reference/command-line-interface/launch/
-# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as binary units (i.e., powers of 1024: GiB, MiB, and KiB).
+# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as Binary (IEC) Units (i.e., powers of 1024: GiB, MiB, and KiB).
 # The longer KB/MB/GB and GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
 readonly default_disk_size="5G"                                         # virtual disk
 readonly default_memory_size="1G"                                       # vRAM
@@ -38,11 +38,11 @@ readonly disk_max_mib=40960                                             # virtua
 readonly memory_max_mib=4096                                            # vRAM --> 4 GiB * 1024 = 4096 MiB
 readonly cpu_max_count=4                                                # vCPUs
 
-# Minimum system requirements per Ubuntu docs:
+# Minimum system requirements per Ubuntu docs converted to Binary (IEC) Units:
 # https://ubuntu.com/server/docs/reference/installation/system-requirements/
 # Note: Multipass defaults (512M disk, 128M RAM) are too low to boot any available Ubuntu image
-readonly disk_min_mib=4000                                              # virtual disk
-readonly memory_min_mib=1000                                            # vRAM
+readonly disk_min_mib=4096                                              # virtual disk --> 4 GiB * 1024 = 4096 MiB
+readonly memory_min_mib=1024                                            # vRAM --> 1 GiB * 1024 = 1024 MiB
 readonly cpu_min_count=1                                                # vCPUs
 
 # Prompts that are used for the user message in the generic ask_size() function
