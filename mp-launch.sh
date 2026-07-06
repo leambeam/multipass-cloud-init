@@ -62,16 +62,66 @@ die() {
   exit 1
 }
 
-# Add the generated SSH public key to the VM's generated cloud-init file
-# Globals: generated_cloud_init_path, sed_flag
-# Arguments: target_private_key_path
-append_cloud_init() {
-    local target_private_key_path=$1
-    local public_key_path="${target_private_key_path}.pub"
-    local public_key
-    public_key=$(cat "$public_key_path")
+# Check if all required tools are installed 
+# Globals: none
+# Arguments: none
+check_required_tools() {
+    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "jq" "bc")
+    local missing_tools=()
+
+    for tool in "${required_tools[@]}"; do
+        if ! command -v "$tool" &> /dev/null; then
+            missing_tools+=("$tool")
+        fi
+    done
+
+    if (( "${#missing_tools[@]}" > 0 )); then
+        for tool in "${missing_tools[@]}"; do
+            echo "Required tool not found: $tool" >&2
+        done
+        die "Missing dependencies. Install the tools listed above and try again."
+    fi
+}
+
+# Prompt for an image to use in the VM
+# Globals: default_ubuntu_image
+# Arguments: none
+ask_image() {
+    local selected_ubuntu_image
+    local image_choice
+
+    while true; do
+
+cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
+Choose Ubuntu image:
+1) 22.04 LTS
+2) 24.04 LTS
+3) 25.10
+4) 26.04 LTS 
+EOF
+
+        read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
     
-    sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
+        case "$image_choice" in
+            1) selected_ubuntu_image="22.04";;
+            2) selected_ubuntu_image="24.04";;
+            3) selected_ubuntu_image="25.10";;
+            4) selected_ubuntu_image="26.04";;
+           "") selected_ubuntu_image="$default_ubuntu_image";; # use default on empty input
+            *)
+                echo "Invalid choice: \"$image_choice\". Enter 1, 2, 3, or 4." >&2
+                continue
+                ;;
+        esac
+
+        # 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
+        if [[ $(multipass find "$selected_ubuntu_image" --only-images) != *"No images"* ]] ; then
+            echo "$selected_ubuntu_image"
+            return 0
+        fi
+
+        echo "Multipass could not find Ubuntu image \"$selected_ubuntu_image\". Choose another image." >&2
+    done
 }
 
 # Prompt for either disk or memory size allocation
@@ -126,47 +176,6 @@ ask_size() {
     done
 }
 
-# Prompt for an image to use in the VM
-# Globals: default_ubuntu_image
-# Arguments: none
-ask_image() {
-    local selected_ubuntu_image
-    local image_choice
-
-    while true; do
-
-cat <<EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
-Choose Ubuntu image:
-1) 22.04 LTS
-2) 24.04 LTS
-3) 25.10
-4) 26.04 LTS 
-EOF
-
-        read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
-    
-        case "$image_choice" in
-            1) selected_ubuntu_image="22.04";;
-            2) selected_ubuntu_image="24.04";;
-            3) selected_ubuntu_image="25.10";;
-            4) selected_ubuntu_image="26.04";;
-           "") selected_ubuntu_image="$default_ubuntu_image";; # use default on empty input
-            *)
-                echo "Invalid choice: \"$image_choice\". Enter 1, 2, 3, or 4." >&2
-                continue
-                ;;
-        esac
-
-        # 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
-        if [[ $(multipass find "$selected_ubuntu_image" --only-images) != *"No images"* ]] ; then
-            echo "$selected_ubuntu_image"
-            return 0
-        fi
-
-        echo "Multipass could not find Ubuntu image \"$selected_ubuntu_image\". Choose another image." >&2
-    done
-}
-
 # Prompt for a cpu allocation in the VM
 # Globals: cpu_min_count, default_cpu_count, cpu_max_count
 # Arguments: none
@@ -203,25 +212,16 @@ ask_cpu() {
     done
 }
 
-# Check if all required tools are installed 
-# Globals: none
-# Arguments: none
-check_required_tools() {
-    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "jq" "bc")
-    local missing_tools=()
-
-    for tool in "${required_tools[@]}"; do
-        if ! command -v "$tool" &> /dev/null; then
-            missing_tools+=("$tool")
-        fi
-    done
-
-    if (( "${#missing_tools[@]}" > 0 )); then
-        for tool in "${missing_tools[@]}"; do
-            echo "Required tool not found: $tool" >&2
-        done
-        die "Missing dependencies. Install the tools listed above and try again."
-    fi
+# Add the generated SSH public key to the VM's generated cloud-init file
+# Globals: generated_cloud_init_path, sed_flag
+# Arguments: target_private_key_path
+append_cloud_init() {
+    local target_private_key_path=$1
+    local public_key_path="${target_private_key_path}.pub"
+    local public_key
+    public_key=$(cat "$public_key_path")
+    
+    sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
 if [[ -z "$vm_name" ]]; then
