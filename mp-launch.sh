@@ -207,7 +207,7 @@ ask_cpu() {
 # Globals: none
 # Arguments: none
 check_required_tools() {
-    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "awk" "bc")
+    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "jq" "bc")
     local missing_tools=()
 
     for tool in "${required_tools[@]}"; do
@@ -300,8 +300,8 @@ multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory 
 readonly ssh_max_attempts=5
 
 for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
-    # Column order per 'multipass list': Name, State, IPv4, Image. May change in future versions
-    read -r current_vm_status current_vm_ip < <(multipass list | awk -v vm_name="$vm_name" '$1 == vm_name {print $2, $3}')
+    current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
+    current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
     if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
         # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
         if ssh-keyscan -T 1 "$current_vm_ip" &> /dev/null; then
