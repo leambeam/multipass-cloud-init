@@ -38,9 +38,11 @@ readonly disk_max_mib=40960                                             # virtua
 readonly memory_max_mib=4096                                            # vRAM --> 4 GiB * 1024 = 4096 MiB
 readonly cpu_max_count=4                                                # vCPUs
 
-# Minimal values allowed by Multipass. 'multipass launch' will fail if any of these are lowered
-readonly disk_min_mib=512                                               # virtual disk
-readonly memory_min_mib=128                                             # vRAM
+# Minimum system requirements per Ubuntu docs:
+# https://ubuntu.com/server/docs/reference/installation/system-requirements/
+# Note: Multipass defaults (512M disk, 128M RAM) are too low to boot any available Ubuntu image
+readonly disk_min_mib=4000                                              # virtual disk
+readonly memory_min_mib=1000                                            # vRAM
 readonly cpu_min_count=1                                                # vCPUs
 
 # Prompts that are used for the user message in the generic ask_size() function
@@ -118,7 +120,7 @@ ask_size() {
             echo "Less than min allowed $prompt_label ${max_gib}G. Try a larger value." >&2
             continue
         fi
-        
+
         echo "$requested_size"
         return
     done
