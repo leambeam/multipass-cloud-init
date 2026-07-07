@@ -34,15 +34,15 @@ readonly default_cpu_count=1                                            # vCPUs
 # KiB, KB, or K, to designate 1024 bytes
 # MiB, MB, or M, to designate 1024 x 1024 = 1048576 bytes
 # GiB, GB, or G, to designate 1024 x 1024 x 1024 = 1073741824 bytes
-readonly disk_max_mib=40960                                             # virtual disk --> 40 GiB * 1024 = 40960 MiB
-readonly memory_max_mib=4096                                            # vRAM --> 4 GiB * 1024 = 4096 MiB
+readonly disk_max_gib=40                                                # virtual disk
+readonly memory_max_gib=4                                               # vRAM
 readonly cpu_max_count=4                                                # vCPUs
 
 # Minimum system requirements per Ubuntu docs converted to Binary (IEC) Units:
 # https://ubuntu.com/server/docs/reference/installation/system-requirements/
 # Note: Multipass defaults (512M disk, 128M RAM) are too low to boot any available Ubuntu image
-readonly disk_min_mib=4096                                              # virtual disk --> 4 GiB * 1024 = 4096 MiB
-readonly memory_min_mib=1024                                            # vRAM --> 1 GiB * 1024 = 1024 MiB
+readonly disk_min_gib=4                                                 # virtual disk
+readonly memory_min_gib=1                                               # vRAM
 readonly cpu_min_count=1                                                # vCPUs
 
 # Prompts that are used for the user message in the generic ask_size() function
@@ -126,16 +126,15 @@ EOF
 
 # Prompt for either disk or memory size allocation
 # Globals: none
-# Arguments: prompt_label, default_value, max_mib, min_mib
+# Arguments: prompt_label, default_value, max_gib, min_gib
 ask_size() {
     local prompt_label=$1
     local default_value=$2
-    local max_mib=$3
-    local min_mib=$4
-    local max_gib=$(echo "scale=2; ${max_mib} / 1024" | bc)
-    local limits_message="(min: ${min_mib}M, default: $default_value, max: ${max_gib}G)"
+    local max_gib=$3
+    local min_gib=$4
+    local limits_message="(min: ${min_gib}G, default: ${default_value}, max: ${max_gib}G)"
     local requested_size
-    local requested_size_mib
+    local requested_size_gib
 
     while true; do
 
@@ -153,21 +152,21 @@ ask_size() {
             continue
         fi
 
-        if [[ "$requested_size" == *G ]]; then
-            requested_size_mib=$(echo "scale=2; ${requested_size%G} * 1024" | bc)
+        if [[ "$requested_size" == *M ]]; then
+            requested_size_gib=$(echo "scale=2; ${requested_size%M} / 1024" | bc)
         else
-            requested_size_mib=$(echo "${requested_size%M}" | bc)
+            requested_size_gib=$(echo "${requested_size%G}" | bc)
         fi
         
         # Pipe to 'bc' to allow decimal comparison
-        if (( $(echo "$requested_size_mib > $max_mib" | bc -l) )); then
+        if (( $(echo "$requested_size_gib > $max_gib" | bc -l) )); then
             echo "Exceeds the max allowed $prompt_label ${max_gib}G. Try a smaller value." >&2
             continue
         fi
         
         # Pipe to 'bc' to allow decimal comparison
-        if (( $(echo "$requested_size_mib < $min_mib" | bc -l) )); then
-            echo "Less than min allowed $prompt_label ${max_gib}G. Try a larger value." >&2
+        if (( $(echo "$requested_size_gib < $min_gib" | bc -l) )); then
+            echo "Less than min allowed $prompt_label ${min_gib}G. Try a larger value." >&2
             continue
         fi
 
@@ -244,8 +243,8 @@ readonly sed_flag
 check_required_tools
 
 ubuntu_image=$(ask_image)
-disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_mib" "$disk_min_mib")
-memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_mib" "$memory_min_mib")
+disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib")
+memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib")
 cpus=$(ask_cpu)
 
 # Create /vms idempotently (i.e., do not fail if already exists)
