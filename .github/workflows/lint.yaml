@@ -1,0 +1,12 @@
+name: Lint
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo to the runner
+        uses: actions/checkout@v7
+        # Shellcheck is preinstalled on GitHub's Linux runner
+      - name: Run ShellCheck
+        run: shellcheck mp-launch.sh mp-delete.sh
