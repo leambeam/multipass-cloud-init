@@ -141,7 +141,7 @@ ask_size() {
         read -r -p "How much $prompt_label do you want to allocate $limits_message? " requested_size
 
         if [[ -z "$requested_size" ]]; then
-            echo $default_value
+            echo "$default_value"
             return
         fi
         
