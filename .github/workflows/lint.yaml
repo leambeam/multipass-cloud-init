@@ -1,5 +1,11 @@
 name: Lint
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths: ['mp-launch.sh', 'mp-delete.sh']
+  pull_request:
+    paths: ['mp-launch.sh', 'mp-delete.sh']
+  workflow_dispatch:
+
 jobs:
   shellcheck:
     name: ShellCheck
