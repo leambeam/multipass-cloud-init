@@ -4,7 +4,7 @@
 # set -o nounset   # abort on unbound variable
 # set -o pipefail  # don't hide errors within pipes
 
-set -x # debug
+# set -x # debug
 
 set -euo pipefail
 
