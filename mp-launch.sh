@@ -223,57 +223,58 @@ append_cloud_init() {
     sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
-if [[ -z "$vm_name" ]]; then
-    die "Usage: $0 <vm-name>."
-# Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
-# Name format per Multipass documentation: https://documentation.ubuntu.com/multipass/latest/reference/instance-name-format/
-elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
-    die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
-fi
+main() {
+    if [[ -z "$vm_name" ]]; then
+        die "Usage: $0 <vm-name>."
+    # Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
+    # Name format per Multipass documentation: https://documentation.ubuntu.com/multipass/latest/reference/instance-name-format/
+    elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
+        die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
+    fi
 
-# BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
-# Arrays are used here as it is the safest way to store commands with arguments
-case "$OSTYPE" in
-    *darwin*|*bsd*) sed_flag=(-i "");;
-    *linux*) sed_flag=(-i);;
-    *) die "Unsupported OS type" ;;
-esac
-readonly sed_flag
+    # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
+    # Arrays are used here as it is the safest way to store commands with arguments
+    case "$OSTYPE" in
+        *darwin*|*bsd*) sed_flag=(-i "");;
+        *linux*) sed_flag=(-i);;
+        *) die "Unsupported OS type" ;;
+    esac
+    readonly sed_flag
 
-check_required_tools
+    check_required_tools
 
-ubuntu_image=$(ask_image)
-disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib")
-memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib")
-cpus=$(ask_cpu)
+    ubuntu_image=$(ask_image)
+    disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib")
+    memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib")
+    cpus=$(ask_cpu)
 
-# Create /vms idempotently (i.e., do not fail if already exists)
-mkdir -p "$vms_base"
+    # Create /vms idempotently (i.e., do not fail if already exists)
+    mkdir -p "$vms_base"
 
-# If the VM name or key directory is already taken, choose a shared new name.
-if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; then
-    echo "VM name or directory \"$vm_name\" already exists. Appending a random number."
-    vm_name="${vm_name}-${random_suffix}"
-    echo "The new VM name is: \"$vm_name\"."
-fi
+    # If the VM name or key directory is already taken, choose a shared new name.
+    if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; then
+        echo "VM name or directory \"$vm_name\" already exists. Appending a random number."
+        vm_name="${vm_name}-${random_suffix}"
+        echo "The new VM name is: \"$vm_name\"."
+    fi
 
-vm_dir="${vms_base}/${vm_name}"                                       # per-vm directory storing key pair, SSH config, and VM's generated cloud-init
-private_key_path="${vm_dir}/${ssh_key_name}"                          # path to the private key
-generated_cloud_init_path="${vm_dir}/cloud-init.yaml"                 # path to the VM's generated cloud-init file
-ssh_config_path="${vm_dir}/config"                                    # path to the SSH config
+    vm_dir="${vms_base}/${vm_name}"                                       # per-vm directory storing key pair, SSH config, and VM's generated cloud-init
+    private_key_path="${vm_dir}/${ssh_key_name}"                          # path to the private key
+    generated_cloud_init_path="${vm_dir}/cloud-init.yaml"                 # path to the VM's generated cloud-init file
+    ssh_config_path="${vm_dir}/config"                                    # path to the SSH config
 
-mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
+    mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 
-# Check if the template exists and copy it
-if [[ -f "$cloud_init_template_path" ]]; then
-    echo "Found the cloud-init template. Copying it."
-    cp "$cloud_init_template_path" "$generated_cloud_init_path"
-else
-    die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
-fi
+    # Check if the template exists and copy it
+    if [[ -f "$cloud_init_template_path" ]]; then
+        echo "Found the cloud-init template. Copying it."
+        cp "$cloud_init_template_path" "$generated_cloud_init_path"
+    else
+        die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
+    fi
 
-ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
-append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
+    ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
+    append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
 # TODO: remove?
 # Config file should not exist, but check just in case
@@ -287,29 +288,35 @@ Host ${vm_name}
 EOF
 fi
 
-# Restrict permissions on VM-related files and directory
-chmod 700 "$vm_dir"
-chmod 600 "$ssh_config_path"
-chmod 600 "$private_key_path"
-chmod 644 "${private_key_path}.pub"
-chmod 644 "$generated_cloud_init_path"
+    # Restrict permissions on VM-related files and directory
+    chmod 700 "$vm_dir"
+    chmod 600 "$ssh_config_path"
+    chmod 600 "$private_key_path"
+    chmod 644 "${private_key_path}.pub"
+    chmod 644 "$generated_cloud_init_path"
 
-multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
+    multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
-readonly ssh_max_attempts=5
+    readonly ssh_max_attempts=5
 
-for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
-    current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
-    current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
-    if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
-        # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
-        if ssh-keyscan -T 1 "$current_vm_ip" &> /dev/null; then
-            # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
-            ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"
-            exit 0
+    for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
+        current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
+        current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
+        if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
+            # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
+            if ssh-keyscan -T 1 "$current_vm_ip" &> /dev/null; then
+                # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
+                ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"
+                exit 0
+            fi
         fi
-    fi
-    sleep 3
-done
+        sleep 3
+    done
 
-die "Failed to connect to \"$vm_name\" after $ssh_max_attempts attempts."
+    die "Failed to connect to \"$vm_name\" after $ssh_max_attempts attempts."
+}
+
+# Do not call the main() function if this script is sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
