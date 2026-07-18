@@ -10,6 +10,5 @@ _common_setup() {
     # make executables visible to PATH
     PATH="$PROJECT_ROOT:$PATH"
 
-    # shellcheck source=../mp-launch.sh
     source "$PROJECT_ROOT/mp-launch.sh"
 }
