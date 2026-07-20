@@ -1,7 +1,7 @@
 name: Test
 on:
   push:
-    # paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
   pull_request:
     paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
   workflow_dispatch:
@@ -13,12 +13,7 @@ jobs:
     steps:
       - name: Check out the repo to the runner
         uses: actions/checkout@v7
-      - name: Setup Bats and bats libs
-        id: setup-bats
-        uses: bats-core/bats-action@4.0.0
+        with:
+          submodules: recursive
       - name: Run Bats
-        shell: bash
-        env:
-         BATS_LIB_PATH: ${{ steps.setup-bats.outputs.lib-path }}
-         TERM: xterm
-        run: bats -p test/
+        run: test/bats/bin/bats -p test
