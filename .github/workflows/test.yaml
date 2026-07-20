@@ -16,4 +16,7 @@ jobs:
         with:
           submodules: recursive
       - name: Run Bats
+        shell: bash
+        env:
+          TERM: xterm
         run: test/bats/bin/bats -p test
