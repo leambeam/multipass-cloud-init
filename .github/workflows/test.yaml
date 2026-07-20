@@ -18,5 +18,5 @@ jobs:
       - name: Run Bats
         shell: bash
         env:
-          TERM: xterm
+          TERM: xterm-256color
         run: test/bats/bin/bats -p test
