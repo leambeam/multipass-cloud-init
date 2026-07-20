@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 _common_setup() {
-    load 'test_helper/bats-support/load'
-    load 'test_helper/bats-assert/load'
-    # get the containing directory of this file
-    # use $BATS_TEST_FILENAME instead of ${BASH_SOURCE[0]} or $0,
-    # as those will point to the bats executable's location or the preprocessed file respectively
-    PROJECT_ROOT="$( cd "$( dirname "$BATS_TEST_FILENAME" )/.." >/dev/null 2>&1 && pwd )"
-    # make executables visible to PATH
-    PATH="$PROJECT_ROOT:$PATH"
+    bats_require_minimum_version 1.13.0
 
+    PROJECT_ROOT="$( cd "$( dirname "$BATS_TEST_FILENAME" )/.." >/dev/null 2>&1 && pwd )"
+    export BATS_LIB_PATH="${PROJECT_ROOT}/test/test_helper"
+
+    bats_load_library bats-support
+    bats_load_library bats-assert
+    
+    PATH="$PROJECT_ROOT:$PATH"
     # shellcheck source=/dev/null
     source "$PROJECT_ROOT/mp-launch.sh"
 }
