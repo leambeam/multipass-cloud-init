@@ -136,7 +136,8 @@ setup() {
     done
 }
 
-# Tests MiB-to-GiB conversion precision at a highest boundary. Shared logic, no need in duplication
+# MiB-to-GiB conversion precision tests (scale=10 in bc division).
+# These aren't testing disk/memory bound values, so there is no need to duplicate for 'memory' param.
 # bats test_tags=ask_size, misc
 @test "call ask_size() - 'disk space' MiB input at the edge of 'disk_max_gib'" {
     local edge_mib
@@ -146,7 +147,6 @@ setup() {
     assert_output "${edge_mib}M"
 }
 
-# Tests MiB-to-GiB conversion precision at a lowest boundary. Shared logic, no need in duplication
 # bats test_tags=ask_size, misc
 @test "call ask_size() - 'disk space' MiB input at the edge of 'disk_min_gib'" {
     local edge_mib
@@ -156,11 +156,22 @@ setup() {
     assert_output "${edge_mib}M"
 }
 
-# @test "ask_size prints correct prompt for memory" {
-#     run --separate-stderr ask_size "memory" "1G" 4 1 <<< "" /dev/null
-#     assert_stderr 'How much memory do you want to allocate (min: 1G, default: 1G, max: 4G)?'
-#     assert_output '1G'
-# }
+# bats test_tags=ask_size, misc
+@test "call ask_size() - 'disk space' MiB input just over 'disk_max_gib' is rejected" {
+    local over_max_mib
+    over_max_mib=$(echo "$disk_max_gib * 1024 + 1" | bc)
+    run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${over_max_mib}M"
+    assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
+}
+
+# bats test_tags=ask_size, misc
+@test "call ask_size() - 'disk space' MiB input just under 'disk_min_gib' is rejected" {
+    local under_min_mib
+    under_min_mib=$(echo "$disk_min_gib * 1024 - 1" | bc)
+    run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${under_min_mib}M"
+    assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
+}
+
 
 # @test "check global vars" {
 #     assert_equal "$default_disk_size" "5G"
