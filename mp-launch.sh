@@ -17,10 +17,10 @@ readonly vms_base="${script_dir}/vms"                                   # root d
 readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
 
-readonly ssh_key_type="ed25519"                                         
-readonly ssh_key_name="id_ed25519"                                      
+readonly ssh_key_type="ed25519"
+readonly ssh_key_name="id_ed25519"
 
-# Default values per Multipass 
+# Default values per Multipass
 # https://documentation.ubuntu.com/multipass/latest/reference/command-line-interface/launch/
 # Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as Binary (IEC) Units (i.e., powers of 1024: GiB, MiB, and KiB).
 # The longer KB/MB/GB and GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
@@ -49,7 +49,7 @@ readonly cpu_min_count=1                                                # vCPUs
 readonly disk_prompt_label="disk space"
 readonly memory_prompt_label="memory"
 
-# Runtime values                
+# Runtime values
 readonly random_suffix="$RANDOM"                                        # suffix used when the requested VM name is taken
 vm_name=${1:-}                                                          # requested VM name; may get a random suffix if already taken
 
@@ -62,7 +62,7 @@ die() {
   exit 1
 }
 
-# Check if all required tools are installed 
+# Check if all required tools are installed
 # Globals: none
 # Arguments: none
 check_required_tools() {
@@ -97,11 +97,11 @@ Choose Ubuntu image:
 1) 22.04 LTS
 2) 24.04 LTS
 3) 25.10
-4) 26.04 LTS 
+4) 26.04 LTS
 EOF
 
         read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
-    
+
         case "$image_choice" in
             1) selected_ubuntu_image="22.04";;
             2) selected_ubuntu_image="24.04";;
@@ -144,7 +144,7 @@ ask_size() {
             echo "$default_value"
             return
         fi
-        
+
         # TODO: Add 'K' suffix?
         # Accept integers and decimals with 'M' and 'G' suffixes e.g., 1.5G or 15M
         if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
@@ -153,17 +153,17 @@ ask_size() {
         fi
 
         if [[ "$requested_size" == *M ]]; then
-            requested_size_gib=$(echo "scale=2; ${requested_size%M} / 1024" | bc)
+            requested_size_gib=$(echo "scale=10; ${requested_size%M} / 1024" | bc)
         else
             requested_size_gib=$(echo "${requested_size%G}" | bc)
         fi
-        
+
         # Pipe to 'bc' to allow decimal comparison
         if (( $(echo "$requested_size_gib > $max_gib" | bc -l) )); then
             echo "Exceeds the max allowed $prompt_label ${max_gib}G. Try a smaller value." >&2
             continue
         fi
-        
+
         # Pipe to 'bc' to allow decimal comparison
         if (( $(echo "$requested_size_gib < $min_gib" | bc -l) )); then
             echo "Less than min allowed $prompt_label ${min_gib}G. Try a larger value." >&2
@@ -219,7 +219,7 @@ append_cloud_init() {
     local public_key_path="${target_private_key_path}.pub"
     local public_key
     public_key=$(cat "$public_key_path")
-    
+
     sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
 
