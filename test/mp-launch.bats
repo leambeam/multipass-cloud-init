@@ -172,6 +172,35 @@ setup() {
     assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
 }
 
+# bats test_tags=ask_cpu
+@test "call ask_cpu() with no input" {
+    run ask_cpu <<< ""
+    assert_success
+    assert_output "$default_cpu_count"
+}
+
+# bats test_tags=ask_cpu
+@test "call ask_cpu() with multiple bad inputs" {
+    local bad_inputs=(-1 1.5 1.0 0.5 1G 1M abc 1a2 a1a)
+
+    for input in "${bad_inputs[@]}"; do
+        run --separate-stderr ask_cpu <<< "$input"
+        assert_stderr "Invalid format: \"$input\" Use a whole number (e.g. 2)."
+    done
+}
+
+# bats test_tags=ask_cpu
+@test "call ask_cpu() with input exceeding 'cpu_max_count' cap" {
+    run --separate-stderr ask_cpu <<< 10
+    assert_stderr "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value."
+}
+
+# bats test_tags=ask_cpu
+@test "call ask_cpu() with input lower than 'cpu_min_count' cap" {
+    run --separate-stderr ask_cpu <<< 0
+    assert_stderr "Less than min allowed CPU allocation $cpu_min_count. Try a larger value."
+}
+
 
 # @test "check global vars" {
 #     assert_equal "$default_disk_size" "5G"
