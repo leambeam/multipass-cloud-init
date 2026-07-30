@@ -201,15 +201,26 @@ setup() {
     assert_stderr "Less than min allowed CPU allocation $cpu_min_count. Try a larger value."
 }
 
+# bats test_tags=append_cloud_init
+@test "append_cloud_init() inserts public key into cloud-init template copy" {
+    # Shadowing the global var used by 'append_cloud_init()' to provide a different path
+    local generated_cloud_init_path="${BATS_FILE_TMPDIR}/cloud-init.yaml"
+    local private_key_path="${BATS_FILE_TMPDIR}/test_key"
+    local public_key
 
-# @test "check global vars" {
-#     assert_equal "$default_disk_size" "5G"
-#     assert_equal "$default_memory_size" "1G"
-#     assert_equal "$disk_max_gib" "40"
-#     assert_equal "$memory_max_gib" "4"
-#     assert_equal "$disk_min_gib" "4"
-#     assert_equal "$disk_prompt_label" "disk space"
-#     assert_equal "$memory_prompt_label" "memory"
-#     assert_equal "$cpu_min_count" "1"
+    cp "${PROJECT_ROOT}/templates/cloud-init.yaml" "$generated_cloud_init_path"
 
-# }
+    case "$OSTYPE" in
+        *darwin*|*bsd*) sed_flag=(-i "");;
+        *linux*) sed_flag=(-i);;
+        *) die "Unsupported OS type";;
+    esac
+
+    ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" -q
+    run append_cloud_init "$private_key_path"
+    assert_success
+
+    public_key=$(cat "${private_key_path}.pub")
+    run grep -Fq "ssh_authorized_keys: [$public_key]" "$generated_cloud_init_path"
+    assert_success
+}
