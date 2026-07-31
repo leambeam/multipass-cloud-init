@@ -1,12 +1,7 @@
 setup() {
     load 'common-setup'
+    load 'test_helper/stub-builders'
     _common_setup
-}
-
-@test "prints usage message on invocation with no arguments" {
-    skip
-    run mp-launch.sh
-    assert_output "Usage: mp-launch.sh <vm-name>."
 }
 
 # bats test_tags=ask_size, disk_space
@@ -223,4 +218,52 @@ setup() {
     public_key=$(cat "${private_key_path}.pub")
     run grep -Fq "ssh_authorized_keys: [$public_key]" "$generated_cloud_init_path"
     assert_success
+}
+
+# bats test_tags=ask_image
+@test "ask_image() returns the correct image for each valid menu choice" {
+    local ubuntu_images=("22.04" "24.04" "25.10" "26.04")
+    local counter=0
+    for image in "${ubuntu_images[@]}"; do
+        counter=$((counter+1))
+        stub_multipass_find_present "$image"
+        run --separate-stderr ask_image <<< "$counter"
+        assert_success
+        assert_output "$image"
+        unstub multipass
+    done
+}
+
+# bats test_tags=ask_image
+@test "ask_image() re-prompts when multipass reports no matching image" {
+    stub_multipass_find_missing "22.04"
+    stub_multipass_find_present "24.04"
+
+    run --separate-stderr ask_image <<< $'1\n2'
+    assert_stderr_line 'Multipass could not find Ubuntu image "22.04". Choose another image.'
+    assert_success
+    assert_output "24.04"
+    unstub multipass
+}
+
+
+# bats test_tags=ask_image
+@test "ask_image() re-prompts with a warning on an invalid menu choice" {
+    stub_multipass_find_present "22.04"
+
+    run --separate-stderr ask_image <<< $'9\n1'
+    assert_stderr_line 'Invalid choice: "9". Enter 1, 2, 3, or 4.'
+    assert_success
+    assert_output "22.04"
+    unstub multipass
+}
+
+# bats test_tags=ask_image
+@test "ask_image() returns the default image on empty input" {
+    stub_multipass_find_present "$default_ubuntu_image"
+
+    run --separate-stderr ask_image <<< ""
+    assert_success
+    assert_output "$default_ubuntu_image"
+    unstub multipass
 }

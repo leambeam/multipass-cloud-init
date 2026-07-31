@@ -8,7 +8,8 @@ _common_setup() {
 
     bats_load_library bats-support
     bats_load_library bats-assert
-    
+    bats_load_library bats-mock/stub.bash
+
     PATH="$PROJECT_ROOT:$PATH"
     # shellcheck source=/dev/null
     source "$PROJECT_ROOT/mp-launch.sh"
