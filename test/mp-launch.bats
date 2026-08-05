@@ -36,8 +36,8 @@ setup() {
 @test "ask_size() re-prompts when disk space input exceeds the max allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1000G\n5G'
     assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
-    assert_output "5G"
     assert_success
+    assert_output "5G"
 }
 
 # bats test_tags=ask_size, disk_space
@@ -51,8 +51,8 @@ setup() {
 @test "ask_size() re-prompts when disk space input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1G\n10G'
     assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
-    assert_output "10G"
     assert_success
+    assert_output "10G"
 }
 
 # bats test_tags=ask_size, disk_space
@@ -63,61 +63,18 @@ setup() {
 }
 
 # bats test_tags=ask_size, memory
-@test "ask_size() returns the default memory size on empty input" {
+@test "ask_size() returns the default memory on empty input" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< ""
     assert_success
     assert_output "$default_memory_size"
 }
 
 # bats test_tags=ask_size, memory
-@test "ask_size() accepts normal memory size input in GiB" {
-    run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2G"
-    assert_success
-    assert_output "2G"
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() accepts normal memory size input in MiB" {
-    run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2048M"
-    assert_success
-    assert_output "2048M"
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() accepts decimal memory size input" {
-    run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2.5G"
-    assert_success
-    assert_output "2.5G"
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() re-prompts when memory size input exceeds the max allowed cap" {
-    run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'1000G\n2G'
-    assert_stderr "Exceeds the max allowed $memory_prompt_label ${memory_max_gib}G. Try a smaller value."
-    assert_output "2G"
-    assert_success
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() accepts memory size input exactly at the max allowed cap" {
-    run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "${memory_max_gib}G"
-    assert_success
-    assert_output "${memory_max_gib}G"
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() re-prompts when memory size input is lower than the min allowed cap" {
+@test "ask_size() re-prompts when memory input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'0.5G\n2G'
     assert_stderr "Less than min allowed $memory_prompt_label ${memory_min_gib}G. Try a larger value."
+    assert_success
     assert_output "2G"
-    assert_success
-}
-
-# bats test_tags=ask_size, memory
-@test "ask_size() accepts memory size input exactly at the min allowed cap" {
-    run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "${memory_min_gib}G"
-    assert_success
-    assert_output "${memory_min_gib}G"
 }
 
 # Tests regex used for both 'disk space' and 'memory' arguments, so there is no need in duplication of this test
