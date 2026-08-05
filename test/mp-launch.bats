@@ -246,7 +246,6 @@ setup() {
     unstub multipass
 }
 
-
 # bats test_tags=ask_image
 @test "ask_image() re-prompts with a warning on an invalid menu choice" {
     stub_multipass_find_present "22.04"
@@ -266,4 +265,46 @@ setup() {
     assert_success
     assert_output "$default_ubuntu_image"
     unstub multipass
+}
+
+# bats test_tags=check_required_tools
+@test "check_required_tools() reports all missing tools and dies" {
+    local required_tools=("multipass" "ssh" "ssh-keygen" "ssh-keyscan" "sed" "jq" "bc")
+    # Not using --separate-stderr here: PATH is intentionally set to
+    # $BATS_MOCK_BINDIR (only for the duration of 'run' execution),
+    # which has no 'mktemp', so stdout/stderr splitting isn't available
+    PATH="$BATS_MOCK_BINDIR" run check_required_tools
+
+    for tool in "${required_tools[@]}"; do
+        assert_line "Required tool not found: $tool"
+    done
+    assert_line "Missing dependencies. Install the tools listed above and try again."
+    assert_failure
+}
+
+# bats test_tags=check_required_tools
+@test "check_required_tools() passes with all the tools present" {
+    stub_all_tools
+    run --separate-stderr check_required_tools
+    assert_success
+    unstub_all_tools
+}
+
+# bats test_tags=main
+@test "main() returns usage message and dies on invocation with no argument" {
+    run --separate-stderr mp-launch.sh
+    assert_stderr --partial 'Usage:'
+    assert_stderr --partial '<vm-name>.'
+    assert_failure
+}
+
+# bats test_tags=main
+@test "main() returns an error and dies on an invalid vm name" {
+    local bad_inputs=("1vm" "vm-" "v!m*" ",./" "-" "1")
+
+    for input in "${bad_inputs[@]}"; do
+        run --separate-stderr mp-launch.sh "$input"
+        assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
+        assert_failure
+    done
 }
