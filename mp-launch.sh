@@ -10,11 +10,11 @@ set -euo pipefail
 
 # Absolute path of directory containing the executed script
 # https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
+launch_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly launch_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly vms_base="${script_dir}/vms"                                   # root directory for per-vm directories
-readonly template_base="${script_dir}/templates"                        # directory for cloud-init templates
+readonly vms_base="${launch_script_dir}/vms"                                   # root directory for per-vm directories
+readonly template_base="${launch_script_dir}/templates"                        # directory for cloud-init templates
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
 
 readonly ssh_key_type="ed25519"

@@ -4,14 +4,14 @@ set -euo pipefail
 
 # Absolute path of directory containing the executed script
 # https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
+delete_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly delete_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly vms_base="${script_dir}/vms"
+readonly vms_base_dir="${delete_script_dir}/vms"
 
 vm_not_found() {
     local vm=$1
-    local answer 
+    local answer
     while true; do
         read -r -p "VM \"$vm\" not found on Multipass. Delete any associated local files? (y/n): " answer
         case "$answer" in
@@ -26,8 +26,8 @@ delete() {
     # Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
     # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0.
     for vm in "$@"; do
-        local vm_dir="${vms_base}/${vm}"
-        
+        local vm_dir="${vms_base_dir}/${vm}"
+
         if multipass info "$vm" &>/dev/null; then
             echo "Deleting \"$vm\"..."
             multipass delete "$vm" --purge || echo "Failed to delete \"$vm\" from Multipass." >&2
@@ -44,10 +44,13 @@ delete() {
     done
 }
 
-if (($# < 1)); then
-    echo "Usage with a single VM: $0 <vm-name>" >&2
-    echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>" >&2
-    exit 1
-fi
+# Do not call the delete() function if this script is sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    if (($# < 1)); then
+        echo "Usage with a single VM: $0 <vm-name>" >&2
+        echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>" >&2
+        exit 1
+    fi
 
-delete "$@"
+    delete "$@"
+fi
