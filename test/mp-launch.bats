@@ -5,35 +5,35 @@ setup() {
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with no input" {
+@test "ask_size() returns the default disk space on empty input" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< ""
     assert_success
     assert_output "$default_disk_size"
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with normal input in GiB" {
+@test "ask_size() accepts normal disk space input in GiB" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "5G"
     assert_success
     assert_output "5G"
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with normal input in MiB" {
+@test "ask_size() accepts normal disk space input in MiB" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "5120M"
     assert_success
     assert_output "5120M"
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with decimal input" {
+@test "ask_size() accepts decimal disk space input" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "5.5G"
     assert_success
     assert_output "5.5G"
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with input exceeding 'disk_max_gib' cap" {
+@test "ask_size() re-prompts when disk space input exceeds the max allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1000G\n5G'
     assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
     assert_output "5G"
@@ -41,14 +41,14 @@ setup() {
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' accepts exactly 'disk_max_gib'" {
+@test "ask_size() accepts disk space input exactly at the max allowed cap" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${disk_max_gib}G"
     assert_success
     assert_output "${disk_max_gib}G"
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' with input lower than 'disk_min_gib' cap" {
+@test "ask_size() re-prompts when disk space input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1G\n10G'
     assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
     assert_output "10G"
@@ -56,42 +56,42 @@ setup() {
 }
 
 # bats test_tags=ask_size, disk_space
-@test "call ask_size() - 'disk space' accepts exactly 'disk_min_gib'" {
+@test "ask_size() accepts disk space input exactly at the min allowed cap" {
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${disk_min_gib}G"
     assert_success
     assert_output "${disk_min_gib}G"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with no input" {
+@test "ask_size() returns the default memory size on empty input" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< ""
     assert_success
     assert_output "$default_memory_size"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with normal input in GiB" {
+@test "ask_size() accepts normal memory size input in GiB" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2G"
     assert_success
     assert_output "2G"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with normal input in MiB" {
+@test "ask_size() accepts normal memory size input in MiB" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2048M"
     assert_success
     assert_output "2048M"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with decimal input" {
+@test "ask_size() accepts decimal memory size input" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "2.5G"
     assert_success
     assert_output "2.5G"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with input exceeding 'memory_max_gib' cap" {
+@test "ask_size() re-prompts when memory size input exceeds the max allowed cap" {
     run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'1000G\n2G'
     assert_stderr "Exceeds the max allowed $memory_prompt_label ${memory_max_gib}G. Try a smaller value."
     assert_output "2G"
@@ -99,14 +99,14 @@ setup() {
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' accepts exactly 'memory_max_gib'" {
+@test "ask_size() accepts memory size input exactly at the max allowed cap" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "${memory_max_gib}G"
     assert_success
     assert_output "${memory_max_gib}G"
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' with input lower than 'memory_min_gib' cap" {
+@test "ask_size() re-prompts when memory size input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'0.5G\n2G'
     assert_stderr "Less than min allowed $memory_prompt_label ${memory_min_gib}G. Try a larger value."
     assert_output "2G"
@@ -114,7 +114,7 @@ setup() {
 }
 
 # bats test_tags=ask_size, memory
-@test "call ask_size() - 'memory' accepts exactly 'memory_min_gib'" {
+@test "ask_size() accepts memory size input exactly at the min allowed cap" {
     run ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< "${memory_min_gib}G"
     assert_success
     assert_output "${memory_min_gib}G"
@@ -122,10 +122,10 @@ setup() {
 
 # Tests regex used for both 'disk space' and 'memory' arguments, so there is no need in duplication of this test
 # bats test_tags=ask_size, misc
-@test "call ask_size() - 'disk space' with multiple bad inputs" {
-    local bad_inputs=(30 abc G30 30-G 30.0.0G .30G 30.G 30ABC -30G 30M00G)
+@test "ask_size() rejects multiple invalid disk space input formats" {
+    local invalid_inputs=(30 abc G30 30-G 30.0.0G .30G 30.G 30ABC -30G 30M00G)
 
-    for input in "${bad_inputs[@]}"; do
+    for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "$input"
         assert_stderr "Invalid format: \"$input\". Use: 1000M or 5G."
     done
@@ -134,7 +134,7 @@ setup() {
 # MiB-to-GiB conversion precision tests (scale=10 in bc division).
 # These aren't testing disk/memory bound values, so there is no need to duplicate for 'memory' param.
 # bats test_tags=ask_size, misc
-@test "call ask_size() - 'disk space' MiB input at the edge of 'disk_max_gib'" {
+@test "ask_size() accepts MiB disk space input at the edge of the max allowed cap" {
     local edge_mib
     edge_mib=$(echo "$disk_max_gib * 1024" | bc)
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${edge_mib}M"
@@ -143,7 +143,7 @@ setup() {
 }
 
 # bats test_tags=ask_size, misc
-@test "call ask_size() - 'disk space' MiB input at the edge of 'disk_min_gib'" {
+@test "ask_size() accepts MiB disk space input at the edge of the min allowed cap" {
     local edge_mib
     edge_mib=$(echo "$disk_min_gib * 1024" | bc)
     run ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${edge_mib}M"
@@ -152,7 +152,7 @@ setup() {
 }
 
 # bats test_tags=ask_size, misc
-@test "call ask_size() - 'disk space' MiB input just over 'disk_max_gib' is rejected" {
+@test "ask_size() rejects MiB disk space input just over the max allowed cap" {
     local over_max_mib
     over_max_mib=$(echo "$disk_max_gib * 1024 + 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${over_max_mib}M"
@@ -160,7 +160,7 @@ setup() {
 }
 
 # bats test_tags=ask_size, misc
-@test "call ask_size() - 'disk space' MiB input just under 'disk_min_gib' is rejected" {
+@test "ask_size() rejects MiB disk space input just under the min allowed cap" {
     local under_min_mib
     under_min_mib=$(echo "$disk_min_gib * 1024 - 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${under_min_mib}M"
@@ -168,30 +168,30 @@ setup() {
 }
 
 # bats test_tags=ask_cpu
-@test "call ask_cpu() with no input" {
+@test "ask_cpu() returns the default CPU count on empty input" {
     run ask_cpu <<< ""
     assert_success
     assert_output "$default_cpu_count"
 }
 
 # bats test_tags=ask_cpu
-@test "call ask_cpu() with multiple bad inputs" {
-    local bad_inputs=(-1 1.5 1.0 0.5 1G 1M abc 1a2 a1a)
+@test "ask_cpu() rejects multiple invalid CPU count input formats" {
+    local invalid_inputs=(-1 1.5 1.0 0.5 1G 1M abc 1a2 a1a)
 
-    for input in "${bad_inputs[@]}"; do
+    for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_cpu <<< "$input"
         assert_stderr "Invalid format: \"$input\" Use a whole number (e.g. 2)."
     done
 }
 
 # bats test_tags=ask_cpu
-@test "call ask_cpu() with input exceeding 'cpu_max_count' cap" {
+@test "ask_cpu() rejects CPU count input exceeding the max allowed cap" {
     run --separate-stderr ask_cpu <<< 10
     assert_stderr "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value."
 }
 
 # bats test_tags=ask_cpu
-@test "call ask_cpu() with input lower than 'cpu_min_count' cap" {
+@test "ask_cpu() rejects CPU count input lower than the min allowed cap" {
     run --separate-stderr ask_cpu <<< 0
     assert_stderr "Less than min allowed CPU allocation $cpu_min_count. Try a larger value."
 }
@@ -300,9 +300,9 @@ setup() {
 
 # bats test_tags=main
 @test "main() returns an error and dies on an invalid vm name" {
-    local bad_inputs=("1vm" "vm-" "v!m*" ",./" "-" "1")
+    local invalid_inputs=("1vm" "vm-" "v!m*" ",./" "-" "1")
 
-    for input in "${bad_inputs[@]}"; do
+    for input in "${invalid_inputs[@]}"; do
         run --separate-stderr mp-launch.sh "$input"
         assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
         assert_failure
