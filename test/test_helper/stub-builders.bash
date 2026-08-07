@@ -29,3 +29,33 @@ unstub_all_tools(){
         unstub "$tool"
     done
 }
+
+stub_multipass_info_present(){
+    local vm=$1
+    stub multipass "info $vm : exit 0"
+}
+
+stub_multipass_info_missing(){
+    local vm=$1
+    stub multipass "info $vm : exit 1"
+}
+
+stub_multipass_delete(){
+    local vm=$1
+    stub multipass "delete $vm --purge : exit 0"
+}
+
+stub_multipass_delete_fail(){
+    local vm=$1
+    stub multipass "delete $vm --purge : exit 1"
+}
+
+stub_ssh_keygen_rm(){
+    local vm=$1
+    stub ssh-keygen "-R ${vm}.local : exit 0"
+}
+
+stub_ssh_keygen_rm_fail(){
+    local vm=$1
+    stub ssh-keygen "-R ${vm}.local : exit 1"
+}

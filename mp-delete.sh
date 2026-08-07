@@ -7,7 +7,7 @@ set -euo pipefail
 delete_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly delete_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly vms_base_dir="${delete_script_dir}/vms"
+vms_base_dir="${delete_script_dir}/vms"
 
 vm_not_found() {
     local vm=$1
