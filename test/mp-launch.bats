@@ -156,8 +156,8 @@ setup() {
 # bats test_tags=append_cloud_init
 @test "append_cloud_init() inserts public key into cloud-init template copy" {
     # Shadowing the global var used by 'append_cloud_init()' to provide a different path
-    local generated_cloud_init_path="${BATS_FILE_TMPDIR}/cloud-init.yaml"
-    local private_key_path="${BATS_FILE_TMPDIR}/test_key"
+    local generated_cloud_init_path="${BATS_TEST_TMPDIR}/cloud-init.yaml"
+    local private_key_path="${BATS_TEST_TMPDIR}/test_key"
     local public_key
 
     cp "${PROJECT_ROOT}/templates/cloud-init.yaml" "$generated_cloud_init_path"
