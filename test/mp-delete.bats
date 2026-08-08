@@ -161,8 +161,7 @@ create_vm_dir(){
 @test "mp-delete.sh dies with a usage message when invoked with no arguments" {
     run --separate-stderr mp-delete.sh
     assert_failure
-    assert_stderr_line --partial "Usage with a single VM:"
-    assert_stderr_line --partial "<vm-name>"
-    assert_stderr_line --partial "Usage with multiple VMs:"
-    assert_stderr_line --partial "<vm-name-1> <vm-name-2> <vm-name-3>"
+    # '/' doesn't need to be escaped in character classes 
+    assert_stderr_line --regexp "^Usage with a single VM: [[:alnum:]/_.-]+ <vm-name>$"
+    assert_stderr_line --regexp "^Usage with multiple VMs: [[:alnum:]/_.-]+ <vm-name-1> <vm-name-2> <vm-name-3>$"
 }

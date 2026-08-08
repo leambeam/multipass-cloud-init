@@ -250,8 +250,8 @@ setup() {
 # bats test_tags=main
 @test "main() returns usage message and dies on invocation with no argument" {
     run --separate-stderr mp-launch.sh
-    assert_stderr --partial 'Usage:'
-    assert_stderr --partial '<vm-name>.'
+    # '/' doesn't need to be escaped in character classes
+    assert_stderr --regexp "^Usage: [[:alnum:]/_.-]+ <vm-name>.$"
     assert_failure
 }
 
