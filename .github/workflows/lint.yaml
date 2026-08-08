@@ -1,5 +1,11 @@
 name: Lint
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash']
+  pull_request:
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash']
+  workflow_dispatch:
+
 jobs:
   shellcheck:
     name: ShellCheck
@@ -7,6 +13,11 @@ jobs:
     steps:
       - name: Check out the repo to the runner
         uses: actions/checkout@v7
-        # Shellcheck is preinstalled on GitHub's Linux runner
       - name: Run ShellCheck
-        run: shellcheck mp-launch.sh mp-delete.sh
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: >-
+            test/bats
+            test/test_helper/bats-assert
+            test/test_helper/bats-support
+          check_together: 'yes'

@@ -1,0 +1,22 @@
+name: Test
+on:
+  push:
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
+  pull_request:
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
+  workflow_dispatch:
+
+jobs:
+  bats:
+    name: Bats
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo to the runner
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Run Bats
+        shell: bash
+        env:
+          TERM: xterm-256color
+        run: test/bats/bin/bats -p test
