@@ -83,6 +83,19 @@ check_required_tools() {
     fi
 }
 
+# Check that disk/memory/cpu caps are set correctly
+# Globals: none
+# Arguments: label, min, max
+check_caps() {
+    local label=$1
+    local min=$2
+    local max=$3
+
+    if (( $(echo "$min > $max" | bc -l) )); then
+        die "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+    fi
+}
+
 # Prompt for an image to use in the VM
 # Globals: default_ubuntu_image
 # Arguments: none
@@ -242,6 +255,11 @@ main() {
     readonly sed_flag
 
     check_required_tools
+
+    # Fail if any resource cap is misconfigured (min > max). Otherwise, 'ask_size()' and 'ask_cpu()' will get stuck
+    check_caps "disk"   "$disk_min_gib"    "$disk_max_gib"
+    check_caps "memory" "$memory_min_gib"  "$memory_max_gib"
+    check_caps "cpu"    "$cpu_min_count"   "$cpu_max_count"
 
     ubuntu_image=$(ask_image)
     disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib")

@@ -247,6 +247,36 @@ setup() {
     unstub_all_tools
 }
 
+# bats test_tags=check_caps
+@test "check_caps() fails when min cap is greater than max cap" {
+    local label="disk"
+    local min=40
+    local max=10
+    run --separate-stderr check_caps "$label" "$min" "$max"
+    assert_failure
+    assert_stderr "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+}
+
+# bats test_tags=check_caps
+@test "check_caps() passes when min cap is less than max cap" {
+    local label="disk"
+    local min=10
+    local max=40
+    run --separate-stderr check_caps "$label" "$min" "$max"
+    assert_success
+    refute_stderr
+}
+
+# bats test_tags=check_caps
+@test "check_caps() works with decimal caps" {
+    local label="memory"
+    local min=4.5
+    local max=4.2
+    run --separate-stderr check_caps "$label" "$min" "$max"
+    assert_failure
+    assert_stderr "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+}
+
 # bats test_tags=main
 @test "main() returns usage message and dies on invocation with no argument" {
     run --separate-stderr mp-launch.sh
