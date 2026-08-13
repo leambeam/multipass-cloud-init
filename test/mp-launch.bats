@@ -35,8 +35,8 @@ setup() {
 # bats test_tags=ask_size, disk_space
 @test "ask_size() re-prompts when disk space input exceeds the max allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1000G\n5G'
-    assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
     assert_success
+    assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
     assert_output "5G"
 }
 
@@ -50,8 +50,8 @@ setup() {
 # bats test_tags=ask_size, disk_space
 @test "ask_size() re-prompts when disk space input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1G\n10G'
-    assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
     assert_success
+    assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
     assert_output "10G"
 }
 
@@ -72,8 +72,8 @@ setup() {
 # bats test_tags=ask_size, memory
 @test "ask_size() re-prompts when memory input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'0.5G\n2G'
-    assert_stderr "Less than min allowed $memory_prompt_label ${memory_min_gib}G. Try a larger value."
     assert_success
+    assert_stderr "Less than min allowed $memory_prompt_label ${memory_min_gib}G. Try a larger value."
     assert_output "2G"
 }
 
@@ -84,6 +84,7 @@ setup() {
 
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "$input"
+        assert_success
         assert_stderr "Invalid format: \"$input\". Use: 1000M or 5G."
     done
 }
@@ -113,6 +114,7 @@ setup() {
     local over_max_mib
     over_max_mib=$(echo "$disk_max_gib * 1024 + 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${over_max_mib}M"
+    assert_success
     assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
 }
 
@@ -121,6 +123,7 @@ setup() {
     local under_min_mib
     under_min_mib=$(echo "$disk_min_gib * 1024 - 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${under_min_mib}M"
+    assert_success
     assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
 }
 
@@ -137,6 +140,7 @@ setup() {
 
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_cpu <<< "$input"
+        assert_success
         assert_stderr "Invalid format: \"$input\" Use a whole number (e.g. 2)."
     done
 }
@@ -144,12 +148,14 @@ setup() {
 # bats test_tags=ask_cpu
 @test "ask_cpu() rejects CPU count input exceeding the max allowed cap" {
     run --separate-stderr ask_cpu <<< 10
+    assert_success
     assert_stderr "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value."
 }
 
 # bats test_tags=ask_cpu
 @test "ask_cpu() rejects CPU count input lower than the min allowed cap" {
     run --separate-stderr ask_cpu <<< 0
+    assert_success
     assert_stderr "Less than min allowed CPU allocation $cpu_min_count. Try a larger value."
 }
 
@@ -231,12 +237,12 @@ setup() {
     # $BATS_MOCK_BINDIR (only for the duration of 'run' execution),
     # which has no 'mktemp', so stdout/stderr splitting isn't available
     PATH="$BATS_MOCK_BINDIR" run check_required_tools
+    assert_failure
 
     for tool in "${required_tools[@]}"; do
         assert_line "Required tool not found: $tool"
     done
     assert_line "Missing dependencies. Install the tools listed above and try again."
-    assert_failure
 }
 
 # bats test_tags=check_required_tools
@@ -281,9 +287,9 @@ setup() {
 # bats test_tags=main
 @test "main() returns usage message and dies on invocation with no argument" {
     run --separate-stderr mp-launch.sh
+    assert_failure
     # '/' doesn't need to be escaped in character classes
     assert_stderr --regexp "^Usage: [[:alnum:]/_.-]+ <vm-name>.$"
-    assert_failure
 }
 
 # bats test_tags=main
@@ -292,7 +298,7 @@ setup() {
 
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr mp-launch.sh "$input"
-        assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
         assert_failure
+        assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
     done
 }
