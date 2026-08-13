@@ -244,6 +244,7 @@ setup() {
     stub_all_tools
     run --separate-stderr check_required_tools
     assert_success
+    refute_stderr
     unstub_all_tools
 }
 

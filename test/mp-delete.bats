@@ -33,6 +33,7 @@ create_vm_dir(){
 
     run --separate-stderr delete "$vm_name"
     assert_success
+    refute_stderr
     assert_line "Deleting \"$vm_name\"..."
     assert_line "Removing $vm_dir"
     assert_not_exists "$vm_dir"
@@ -57,6 +58,7 @@ create_vm_dir(){
 
     run --separate-stderr delete "${vm_names[@]}"
     assert_success
+    refute_stderr
 
     for vm in "${vm_names[@]}"; do
         assert_line "Deleting \"$vm\"..."
@@ -82,6 +84,7 @@ create_vm_dir(){
 
     run --separate-stderr delete "$vm_name" <<< 'y'
     assert_success
+    refute_stderr
     refute_line "Deleting \"$vm_name\"..."
     assert_line "Removing $vm_dir"
     assert_not_exists "$vm_dir"
@@ -104,7 +107,8 @@ create_vm_dir(){
     run --separate-stderr delete "$vm_name" <<< 'n'
     assert_success
     assert_exists "$vm_dir"
-    refute_output # Shouldn't be any output
+    refute_stderr
+    refute_output
 
     unstub multipass
 }
@@ -161,7 +165,7 @@ create_vm_dir(){
 @test "mp-delete.sh dies with a usage message when invoked with no arguments" {
     run --separate-stderr mp-delete.sh
     assert_failure
-    # '/' doesn't need to be escaped in character classes 
+    # '/' doesn't need to be escaped in character classes
     assert_stderr_line --regexp "^Usage with a single VM: [[:alnum:]/_.-]+ <vm-name>$"
     assert_stderr_line --regexp "^Usage with multiple VMs: [[:alnum:]/_.-]+ <vm-name-1> <vm-name-2> <vm-name-3>$"
 }
