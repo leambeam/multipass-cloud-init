@@ -2,8 +2,6 @@ name: Test
 on:
   push:
     paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
-  pull_request:
-    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/*.bats']
   workflow_dispatch:
 
 jobs:
