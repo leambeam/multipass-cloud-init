@@ -2,8 +2,6 @@ name: Lint
 on:
   push:
     paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash']
-  pull_request:
-    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash']
   workflow_dispatch:
 
 jobs:
