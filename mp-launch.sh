@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# set -o errexit   # abort on nonzero exitstatus
-# set -o nounset   # abort on unbound variable
-# set -o pipefail  # don't hide errors within pipes
-
 # set -x # debug
 
 set -euo pipefail
@@ -13,8 +9,8 @@ set -euo pipefail
 launch_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly launch_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly vms_base="${launch_script_dir}/vms"                                   # root directory for per-vm directories
-readonly template_base="${launch_script_dir}/templates"                        # directory for cloud-init templates
+readonly vms_base="${launch_script_dir}/vms"                            # root directory for per-vm directories
+readonly template_base="${launch_script_dir}/templates"                 # directory for cloud-init templates
 readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
 
 readonly ssh_key_type="ed25519"
@@ -145,7 +141,7 @@ ask_size() {
     local default_value=$2
     local max_gib=$3
     local min_gib=$4
-    local limits_message="(min: ${min_gib}G, default: ${default_value}, max: ${max_gib}G)"
+    local limits_message="(min: ${min_gib}G, default: $default_value, max: ${max_gib}G)"
     local requested_size
     local requested_size_gib
 
@@ -158,10 +154,9 @@ ask_size() {
             return
         fi
 
-        # TODO: Add 'K' suffix?
         # Accept integers and decimals with 'M' and 'G' suffixes e.g., 1.5G or 15M
         if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
-            echo "Invalid format: \"$requested_size\". Use: 1000M or 5G." >&2
+            echo "Invalid format: \"$requested_size\". Use integer or decimal value, followed by either M or G suffix (e.g., 1000M, 5G, or 5.5G)." >&2
             continue
         fi
 
@@ -204,7 +199,7 @@ ask_cpu() {
         fi
 
         if ! [[ "$requested_cpus" =~ ^[0-9]+$ ]]; then
-            echo "Invalid format: \"$requested_cpus\" Use a whole number (e.g. 2)." >&2
+            echo "Invalid format: \"$requested_cpus\". Use a whole number (e.g., 2)." >&2
             continue
         fi
 
@@ -220,7 +215,6 @@ ask_cpu() {
 
         echo "$requested_cpus"
         return
-
     done
 }
 
@@ -231,7 +225,7 @@ append_cloud_init() {
     local target_private_key_path=$1
     local public_key_path="${target_private_key_path}.pub"
     local public_key
-    public_key=$(cat "$public_key_path")
+    public_key=$(< "$public_key_path")
 
     sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
 }
@@ -242,7 +236,7 @@ main() {
     # Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
     # Name format per Multipass documentation: https://documentation.ubuntu.com/multipass/latest/reference/instance-name-format/
     elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
-        die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
+        die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g., vm-111)."
     fi
 
     # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
@@ -294,9 +288,6 @@ main() {
     ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
     append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
-# TODO: remove?
-# Config file should not exist, but check just in case
-if [[ ! -f "$ssh_config_path" ]]; then
 cat <<EOF > "$ssh_config_path"
 Host ${vm_name}
     HostName ${vm_name}.local
@@ -304,7 +295,6 @@ Host ${vm_name}
     User ubuntu
     Port 22
 EOF
-fi
 
     # Restrict permissions on VM-related files and directory
     chmod 700 "$vm_dir"
@@ -318,6 +308,8 @@ fi
     readonly ssh_max_attempts=5
 
     for (( ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++ )); do
+        local current_vm_status
+        local current_vm_ip
         current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
         current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
         if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then

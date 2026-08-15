@@ -85,7 +85,7 @@ setup() {
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "$input"
         assert_success
-        assert_stderr "Invalid format: \"$input\". Use: 1000M or 5G."
+        assert_stderr "Invalid format: \"$input\". Use integer or decimal value, followed by either M or G suffix (e.g., 1000M, 5G, or 5.5G)."
     done
 }
 
@@ -141,7 +141,7 @@ setup() {
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_cpu <<< "$input"
         assert_success
-        assert_stderr "Invalid format: \"$input\" Use a whole number (e.g. 2)."
+        assert_stderr "Invalid format: \"$input\". Use a whole number (e.g., 2)."
     done
 }
 
@@ -299,6 +299,6 @@ setup() {
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr mp-launch.sh "$input"
         assert_failure
-        assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g. vm-111)."
+        assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g., vm-111)."
     done
 }

@@ -7,6 +7,7 @@ set -euo pipefail
 delete_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly delete_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
+# Not 'readonly' so bats tests could shadow it
 vms_base_dir="${delete_script_dir}/vms"
 
 vm_not_found() {
@@ -38,7 +39,7 @@ delete() {
         ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from known hosts." >&2
 
         if [[ -d "$vm_dir" ]]; then
-            echo "Removing $vm_dir"
+            echo "Removing \"$vm_dir\"..."
             rm -r "$vm_dir" || echo "Failed to remove \"$vm_dir\"." >&2
         fi
     done

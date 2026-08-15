@@ -35,7 +35,7 @@ create_vm_dir(){
     assert_success
     refute_stderr
     assert_line "Deleting \"$vm_name\"..."
-    assert_line "Removing $vm_dir"
+    assert_line "Removing \"$vm_dir\"..."
     assert_not_exists "$vm_dir"
 
     unstub multipass
@@ -62,7 +62,7 @@ create_vm_dir(){
 
     for vm in "${vm_names[@]}"; do
         assert_line "Deleting \"$vm\"..."
-        assert_line "Removing ${vms_base_dir}/${vm}"
+        assert_line "Removing \"${vms_base_dir}/${vm}\"..."
         assert_not_exists "${vms_base_dir}/${vm}"
     done
 
@@ -86,7 +86,7 @@ create_vm_dir(){
     assert_success
     refute_stderr
     refute_line "Deleting \"$vm_name\"..."
-    assert_line "Removing $vm_dir"
+    assert_line "Removing \"$vm_dir\"..."
     assert_not_exists "$vm_dir"
 
     unstub multipass
@@ -130,7 +130,7 @@ create_vm_dir(){
     assert_success
     assert_stderr "Failed to delete \"$vm_name\" from Multipass."
     assert_line "Deleting \"$vm_name\"..."
-    assert_line "Removing $vm_dir"
+    assert_line "Removing \"$vm_dir\"..."
     assert_not_exists "$vm_dir"
 
     unstub multipass
@@ -154,7 +154,7 @@ create_vm_dir(){
     assert_success
     assert_stderr "Failed to remove \"$vm_name\" from known hosts."
     assert_line "Deleting \"$vm_name\"..."
-    assert_line "Removing $vm_dir"
+    assert_line "Removing \"$vm_dir\"..."
     assert_not_exists "$vm_dir"
 
     unstub multipass
