@@ -15,7 +15,7 @@ create_vm_dir(){
 @test "vm_not_found() re-prompts on an invalid menu choice" {
     run --separate-stderr vm_not_found vm-111 <<< $'hello\nn'
     assert_failure
-    assert_stderr "Invalid choice. Use either y or n."
+    assert_stderr 'Invalid choice: "hello". Use either y or n.'
 }
 
 # bats test_tags=delete
@@ -152,7 +152,7 @@ create_vm_dir(){
 
     run --separate-stderr delete "$vm_name"
     assert_success
-    assert_stderr "Failed to remove \"$vm_name\" from known hosts."
+    assert_stderr "Failed to remove \"$vm_name\" from the known_hosts file."
     assert_line "Deleting \"$vm_name\"..."
     assert_line "Removing \"$vm_dir\"..."
     assert_not_exists "$vm_dir"
@@ -165,7 +165,7 @@ create_vm_dir(){
 @test "mp-delete.sh dies with a usage message when invoked with no arguments" {
     run --separate-stderr mp-delete.sh
     assert_failure
-    # '/' doesn't need to be escaped in character classes
-    assert_stderr_line --regexp "^Usage with a single VM: [[:alnum:]/_.-]+ <vm-name>$"
-    assert_stderr_line --regexp "^Usage with multiple VMs: [[:alnum:]/_.-]+ <vm-name-1> <vm-name-2> <vm-name-3>$"
+    # Special chars don't need to be escaped in character classes
+    assert_stderr_line --regexp "^Usage with a single VM: [[:alnum:]/_.-]+ <vm-name>\.$"
+    assert_stderr_line --regexp "^Usage with multiple VMs: [[:alnum:]/_.-]+ <vm-name-1> <vm-name-2> <vm-name-3>\.$"
 }

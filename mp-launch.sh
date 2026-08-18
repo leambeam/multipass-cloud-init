@@ -18,7 +18,7 @@ readonly ssh_key_name="id_ed25519"
 
 # Default values per Multipass
 # https://documentation.ubuntu.com/multipass/latest/reference/command-line-interface/launch/
-# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as Binary (IEC) Units (i.e., powers of 1024: GiB, MiB, and KiB).
+# Note: Multipass (e.g., in 'multipass launch') accepts G, M, K suffixes as Binary (IEC) Units (i.e., powers of 1024: GiB, MiB, and KiB)
 # The longer KB/MB/GB and GiB/MiB/KiB suffixes are also valid in Multipass but aren't included in this script's validation regex
 readonly default_disk_size="5G"                                         # virtual disk
 readonly default_memory_size="1G"                                       # vRAM
@@ -88,7 +88,7 @@ check_caps() {
     local max=$3
 
     if (( $(echo "$min > $max" | bc -l) )); then
-        die "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+        die "Invalid caps: ${label} minimum (${min}) exceeds its maximum (${max})."
     fi
 }
 
@@ -156,7 +156,7 @@ ask_size() {
 
         # Accept integers and decimals with 'M' and 'G' suffixes e.g., 1.5G or 15M
         if ! [[ "$requested_size" =~ ^[0-9]+([.][0-9]+)?[MG]$ ]]; then
-            echo "Invalid format: \"$requested_size\". Use integer or decimal value, followed by either M or G suffix (e.g., 1000M, 5G, or 5.5G)." >&2
+            echo "Invalid format: \"$requested_size\". Use an integer or a decimal value, followed by either an M or a G suffix (e.g., 1000M, 5G, or 5.5G)." >&2
             continue
         fi
 
@@ -168,13 +168,13 @@ ask_size() {
 
         # Pipe to 'bc' to allow decimal comparison
         if (( $(echo "$requested_size_gib > $max_gib" | bc -l) )); then
-            echo "Exceeds the max allowed $prompt_label ${max_gib}G. Try a smaller value." >&2
+            echo "Requested $prompt_label exceeds the allowed maximum of ${max_gib}G. Try a smaller value." >&2
             continue
         fi
 
         # Pipe to 'bc' to allow decimal comparison
         if (( $(echo "$requested_size_gib < $min_gib" | bc -l) )); then
-            echo "Less than min allowed $prompt_label ${min_gib}G. Try a larger value." >&2
+            echo "Requested $prompt_label is less than the allowed minimum of ${min_gib}G. Try a larger value." >&2
             continue
         fi
 
@@ -204,12 +204,12 @@ ask_cpu() {
         fi
 
         if (( "$requested_cpus" > "$cpu_max_count" )); then
-            echo "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value." >&2
+            echo "Requested CPU allocation exceeds the allowed maximum of $cpu_max_count. Try a smaller value." >&2
             continue
         fi
 
         if (( "$requested_cpus" < "$cpu_min_count" )); then
-            echo "Less than min allowed CPU allocation $cpu_min_count. Try a larger value." >&2
+            echo "Requested CPU allocation is less than the allowed minimum of $cpu_min_count. Try a larger value." >&2
             continue
         fi
 
@@ -239,12 +239,12 @@ main() {
         die "Invalid VM name \"$vm_name\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g., vm-111)."
     fi
 
-    # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not.
+    # BSD (macOS and other bsd systems) sed requires an empty backup suffix for -i, while GNU (Linux) sed does not
     # Arrays are used here as it is the safest way to store commands with arguments
     case "$OSTYPE" in
         *darwin*|*bsd*) sed_flag=(-i "");;
         *linux*) sed_flag=(-i);;
-        *) die "Unsupported OS type" ;;
+        *) die "Unsupported OS type." ;;
     esac
     readonly sed_flag
 
@@ -263,9 +263,9 @@ main() {
     # Create /vms idempotently (i.e., do not fail if already exists)
     mkdir -p "$vms_base"
 
-    # If the VM name or key directory is already taken, choose a shared new name.
+    # If the VM name or key directory is already taken, choose a shared new name
     if multipass info "$vm_name" &> /dev/null || [[ -d "${vms_base}/${vm_name}" ]]; then
-        echo "VM name or directory \"$vm_name\" already exists. Appending a random number."
+        echo "VM name or directory \"$vm_name\" already exists. Appending a random suffix."
         vm_name="${vm_name}-${random_suffix}"
         echo "The new VM name is: \"$vm_name\"."
     fi
@@ -313,7 +313,7 @@ EOF
         current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
         current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
         if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
-            # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames.
+            # Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames
             if ssh-keyscan -T 1 "$current_vm_ip" &> /dev/null; then
                 # StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
                 ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"

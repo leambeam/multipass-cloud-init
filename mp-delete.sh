@@ -7,7 +7,7 @@ set -euo pipefail
 delete_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly delete_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-# Not 'readonly' so bats tests could shadow it
+# Not 'readonly' on purpose, so bats tests are able to shadow it
 vms_base_dir="${delete_script_dir}/vms"
 
 vm_not_found() {
@@ -18,14 +18,14 @@ vm_not_found() {
         case "$answer" in
         y) return 0 ;;
         n) return 1 ;;
-        *) echo "Invalid choice. Use either y or n." >&2 ;;
+        *) echo "Invalid choice: \"$answer\". Use either y or n." >&2 ;;
         esac
     done
 }
 
 delete() {
     # Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
-    # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0.
+    # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
     for vm in "$@"; do
         local vm_dir="${vms_base_dir}/${vm}"
 
@@ -36,7 +36,7 @@ delete() {
             vm_not_found "$vm" || continue # skip the rest of the loop if 'vm_not_found' returns 1
         fi
 
-        ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from known hosts." >&2
+        ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from the known_hosts file." >&2
 
         if [[ -d "$vm_dir" ]]; then
             echo "Removing \"$vm_dir\"..."
@@ -48,8 +48,8 @@ delete() {
 # Do not call the delete() function if this script is sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if (($# < 1)); then
-        echo "Usage with a single VM: $0 <vm-name>" >&2
-        echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>" >&2
+        echo "Usage with a single VM: $0 <vm-name>." >&2
+        echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>." >&2
         exit 1
     fi
 

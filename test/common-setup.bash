@@ -11,6 +11,8 @@ _common_setup() {
     bats_load_library bats-mock/stub.bash
 
     PATH="$PROJECT_ROOT:$PATH"
+    # Both scripts are sourced into the same shell, so they share one namespace
+    # Thus, no global variables or functions between them can have the same name
     # shellcheck source=/dev/null
     source "$PROJECT_ROOT/mp-launch.sh"
     # shellcheck source=/dev/null

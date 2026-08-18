@@ -36,7 +36,7 @@ setup() {
 @test "ask_size() re-prompts when disk space input exceeds the max allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1000G\n5G'
     assert_success
-    assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
+    assert_stderr "Requested $disk_prompt_label exceeds the allowed maximum of ${disk_max_gib}G. Try a smaller value."
     assert_output "5G"
 }
 
@@ -51,7 +51,7 @@ setup() {
 @test "ask_size() re-prompts when disk space input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< $'1G\n10G'
     assert_success
-    assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
+    assert_stderr "Requested $disk_prompt_label is less than the allowed minimum of ${disk_min_gib}G. Try a larger value."
     assert_output "10G"
 }
 
@@ -73,7 +73,7 @@ setup() {
 @test "ask_size() re-prompts when memory input is lower than the min allowed cap" {
     run --separate-stderr ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib" <<< $'0.5G\n2G'
     assert_success
-    assert_stderr "Less than min allowed $memory_prompt_label ${memory_min_gib}G. Try a larger value."
+    assert_stderr "Requested $memory_prompt_label is less than the allowed minimum of ${memory_min_gib}G. Try a larger value."
     assert_output "2G"
 }
 
@@ -85,7 +85,7 @@ setup() {
     for input in "${invalid_inputs[@]}"; do
         run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "$input"
         assert_success
-        assert_stderr "Invalid format: \"$input\". Use integer or decimal value, followed by either M or G suffix (e.g., 1000M, 5G, or 5.5G)."
+        assert_stderr "Invalid format: \"$input\". Use an integer or a decimal value, followed by either an M or a G suffix (e.g., 1000M, 5G, or 5.5G)."
     done
 }
 
@@ -115,7 +115,7 @@ setup() {
     over_max_mib=$(echo "$disk_max_gib * 1024 + 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${over_max_mib}M"
     assert_success
-    assert_stderr "Exceeds the max allowed $disk_prompt_label ${disk_max_gib}G. Try a smaller value."
+    assert_stderr "Requested $disk_prompt_label exceeds the allowed maximum of ${disk_max_gib}G. Try a smaller value."
 }
 
 # bats test_tags=ask_size, misc
@@ -124,7 +124,7 @@ setup() {
     under_min_mib=$(echo "$disk_min_gib * 1024 - 1" | bc)
     run --separate-stderr ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib" <<< "${under_min_mib}M"
     assert_success
-    assert_stderr "Less than min allowed $disk_prompt_label ${disk_min_gib}G. Try a larger value."
+    assert_stderr "Requested $disk_prompt_label is less than the allowed minimum of ${disk_min_gib}G. Try a larger value."
 }
 
 # bats test_tags=ask_cpu
@@ -149,14 +149,14 @@ setup() {
 @test "ask_cpu() rejects CPU count input exceeding the max allowed cap" {
     run --separate-stderr ask_cpu <<< 10
     assert_success
-    assert_stderr "Exceeds the max allowed CPU allocation $cpu_max_count. Try a smaller value."
+    assert_stderr "Requested CPU allocation exceeds the allowed maximum of $cpu_max_count. Try a smaller value."
 }
 
 # bats test_tags=ask_cpu
 @test "ask_cpu() rejects CPU count input lower than the min allowed cap" {
     run --separate-stderr ask_cpu <<< 0
     assert_success
-    assert_stderr "Less than min allowed CPU allocation $cpu_min_count. Try a larger value."
+    assert_stderr "Requested CPU allocation is less than the allowed minimum of $cpu_min_count. Try a larger value."
 }
 
 # bats test_tags=append_cloud_init
@@ -171,7 +171,7 @@ setup() {
     case "$OSTYPE" in
         *darwin*|*bsd*) sed_flag=(-i "");;
         *linux*) sed_flag=(-i);;
-        *) die "Unsupported OS type";;
+        *) die "Unsupported OS type.";;
     esac
 
     ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" -q
@@ -261,7 +261,7 @@ setup() {
     local max=10
     run --separate-stderr check_caps "$label" "$min" "$max"
     assert_failure
-    assert_stderr "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+    assert_stderr "Invalid caps: ${label} minimum (${min}) exceeds its maximum (${max})."
 }
 
 # bats test_tags=check_caps
@@ -281,7 +281,7 @@ setup() {
     local max=4.2
     run --separate-stderr check_caps "$label" "$min" "$max"
     assert_failure
-    assert_stderr "Invalid caps: ${label} min (${min}) is larger than max (${max})."
+    assert_stderr "Invalid caps: ${label} minimum (${min}) exceeds its maximum (${max})."
 }
 
 # bats test_tags=main
