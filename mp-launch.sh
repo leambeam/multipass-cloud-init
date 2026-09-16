@@ -9,9 +9,9 @@ set -euo pipefail
 launch_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly launch_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
-readonly vms_base="${launch_script_dir}/vms"                            # root directory for per-vm directories
-readonly template_base="${launch_script_dir}/templates"                 # directory for cloud-init templates
-readonly cloud_init_template_path="${template_base}/cloud-init.yaml"    # path to the cloud-init template copied per VM
+readonly vms_base="${launch_script_dir}/vms"                          # root directory for per-vm directories
+template_base="${launch_script_dir}/templates"                 		  # directory for cloud-init templates; non-readonly for Bats shadowing
+readonly default_template="cloud-init.yaml"							  # name of the default cloud-init template
 
 readonly ssh_key_type="ed25519"
 readonly ssh_key_name="id_ed25519"
@@ -90,6 +90,55 @@ check_caps() {
     if (( $(echo "$min > $max" | bc -l) )); then
         die "Invalid caps: ${label} minimum (${min}) exceeds its maximum (${max})."
     fi
+}
+
+# Prompt for a cloud-init template; auto-select if only one exists
+# Globals: template_base, default_template
+# Arguments: none
+choose_template() {
+	# Globs will expand to null, instead of themselves if no matches are found
+	shopt -s nullglob
+	# Unset 'nullglob', when the function exits
+	trap 'shopt -u nullglob' RETURN
+	# Glob files with '.yaml' and '.yml' extensions
+	local templates=("${template_base}"/*.yaml "${template_base}"/*.yml)
+	local default_template_path="${template_base}/${default_template}"
+	local default_prompt=""
+	local choice
+	local i
+
+	if (("${#templates[@]}" == 0)); then
+		die "Failed to find any .yaml or .yml templates in the \"$template_base\" directory."
+	fi
+
+	if (("${#templates[@]}" == 1)); then
+		echo "Only one template was found. Selecting it automatically." >&2
+		echo "${templates[@]}"
+		return 0
+	else
+		echo "Found ${#templates[@]} templates at \"$template_base\":" >&2
+		for i in "${!templates[@]}"; do
+			# echo template's number starting from one and its name
+			echo "$((i + 1)): $(basename "${templates[$i]}")" >&2
+		done
+
+		if [[ -f "$default_template_path" ]]; then
+			default_prompt=" (default: $default_template)"
+		fi
+
+		while true; do
+			read -r -p "Which template do you want to use${default_prompt}: " choice
+			if [[ -z "$choice" && -n "$default_prompt" ]]; then
+				echo "$default_template_path"
+				return 0
+			elif [[ "$choice" =~ ^[1-9][0-9]*$ && -v "templates[$choice - 1]" ]]; then
+				echo "${templates[$choice - 1]}"
+				return 0
+			else
+				echo "Invalid choice: \"$choice\". Enter a number from the list." >&2
+			fi
+		done
+	fi
 }
 
 # Prompt for an image to use in the VM
@@ -255,10 +304,11 @@ main() {
     check_caps "memory" "$memory_min_gib"  "$memory_max_gib"
     check_caps "cpu"    "$cpu_min_count"   "$cpu_max_count"
 
-    ubuntu_image=$(ask_image)
+	ubuntu_image=$(ask_image)
     disk_size=$(ask_size "$disk_prompt_label" "$default_disk_size" "$disk_max_gib" "$disk_min_gib")
     memory_size=$(ask_size "$memory_prompt_label" "$default_memory_size" "$memory_max_gib" "$memory_min_gib")
     cpus=$(ask_cpu)
+    selected_template=$(choose_template)
 
     # Create /vms idempotently (i.e., do not fail if already exists)
     mkdir -p "$vms_base"
@@ -276,14 +326,7 @@ main() {
     ssh_config_path="${vm_dir}/config"                                    # path to the SSH config
 
     mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
-
-    # Check if the template exists and copy it
-    if [[ -f "$cloud_init_template_path" ]]; then
-        echo "Found the cloud-init template. Copying it."
-        cp "$cloud_init_template_path" "$generated_cloud_init_path"
-    else
-        die "Failed to find cloud-init template at \"$cloud_init_template_path\"."
-    fi
+	cp "$selected_template" "$generated_cloud_init_path" || die "Failed to copy template: \"$selected_template\"."
 
     ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
     append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
