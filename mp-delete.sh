@@ -11,47 +11,47 @@ readonly delete_script_dir # Declare and assign separately to avoid masking retu
 vms_base_dir="${delete_script_dir}/vms"
 
 vm_not_found() {
-    local vm=$1
-    local answer
-    while true; do
-        read -r -p "VM \"$vm\" not found on Multipass. Delete any associated local files? (y/n): " answer
-        case "$answer" in
-        y) return 0 ;;
-        n) return 1 ;;
-        *) echo "Invalid choice: \"$answer\". Use either y or n." >&2 ;;
-        esac
-    done
+	local vm=$1
+	local answer
+	while true; do
+		read -r -p "VM \"$vm\" not found on Multipass. Delete any associated local files? (y/n): " answer
+		case "$answer" in
+		y) return 0 ;;
+		n) return 1 ;;
+		*) echo "Invalid choice: \"$answer\". Use either y or n." >&2 ;;
+		esac
+	done
 }
 
 delete() {
-    # Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
-    # interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
-    for vm in "$@"; do
-        local vm_dir="${vms_base_dir}/${vm}"
+	# Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
+	# interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
+	for vm in "$@"; do
+		local vm_dir="${vms_base_dir}/${vm}"
 
-        if multipass info "$vm" &>/dev/null; then
-            echo "Deleting \"$vm\"..."
-            multipass delete "$vm" --purge || echo "Failed to delete \"$vm\" from Multipass." >&2
-        else
-            vm_not_found "$vm" || continue # skip the rest of the loop if 'vm_not_found' returns 1
-        fi
+		if multipass info "$vm" &>/dev/null; then
+			echo "Deleting \"$vm\"..."
+			multipass delete "$vm" --purge || echo "Failed to delete \"$vm\" from Multipass." >&2
+		else
+			vm_not_found "$vm" || continue # skip the rest of the loop if 'vm_not_found' returns 1
+		fi
 
-        ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from the known_hosts file." >&2
+		ssh-keygen -R "${vm}.local" || echo "Failed to remove \"$vm\" from the known_hosts file." >&2
 
-        if [[ -d "$vm_dir" ]]; then
-            echo "Removing \"$vm_dir\"..."
-            rm -r "$vm_dir" || echo "Failed to remove \"$vm_dir\"." >&2
-        fi
-    done
+		if [[ -d "$vm_dir" ]]; then
+			echo "Removing \"$vm_dir\"..."
+			rm -r "$vm_dir" || echo "Failed to remove \"$vm_dir\"." >&2
+		fi
+	done
 }
 
 # Do not call the delete() function if this script is sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    if (($# < 1)); then
-        echo "Usage with a single VM: $0 <vm-name>." >&2
-        echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>." >&2
-        exit 1
-    fi
+	if (($# < 1)); then
+		echo "Usage with a single VM: $0 <vm-name>." >&2
+		echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>." >&2
+		exit 1
+	fi
 
-    delete "$@"
+	delete "$@"
 fi
