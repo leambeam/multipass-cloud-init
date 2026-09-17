@@ -1,6 +1,7 @@
 setup() {
     load 'common-setup'
     load 'test_helper/stub-builders'
+    load 'test_helper/fixture-builders'
     _common_setup
 }
 
@@ -282,6 +283,74 @@ setup() {
     run --separate-stderr check_caps "$label" "$min" "$max"
     assert_failure
     assert_stderr "Invalid caps: ${label} minimum (${min}) exceeds its maximum (${max})."
+}
+
+# bats test_tags=choose_template
+@test "choose_template() fails when no templates are found" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base"
+
+    run --separate-stderr choose_template
+    assert_failure
+    assert_stderr "Failed to find any .yaml or .yml templates in the \"$template_base\" directory."
+}
+
+# bats test_tags=choose_template
+@test "choose_template() selects the template automatically when only one is found" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base" "a.yaml"
+
+    run --separate-stderr choose_template
+    assert_success
+    assert_stderr "Only one template was found. Selecting it automatically."
+    assert_output "$template_base/a.yaml"
+}
+
+# bats test_tags=choose_template
+@test "choose_template() returns the default template on empty input" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base" "a.yaml" "b.yaml" "cloud-init.yaml"
+
+    run --separate-stderr choose_template <<< ""
+    assert_success
+    assert_output "$template_base/cloud-init.yaml"
+}
+
+# bats test_tags=choose_template
+@test "choose_template() re-prompts on empty input with no default" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base" "a.yaml" "b.yaml"
+
+    run --separate-stderr choose_template <<< $'\n2'
+    assert_success
+    assert_output "$template_base/b.yaml"
+}
+
+# bats test_tags=choose_template
+@test "choose_template() re-prompts with a warning on an invalid choice" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base" "a.yaml" "b.yaml"
+
+    # '9' is valid but out of range, while 'abc' is not valid
+    run --separate-stderr choose_template <<< $'9\nabc\n1'
+    assert_success
+    assert_stderr_line 'Invalid choice: "9". Enter a number from the list.'
+    assert_stderr_line 'Invalid choice: "abc". Enter a number from the list.'
+    assert_output "$template_base/a.yaml"
+}
+
+# bats test_tags=choose_template
+@test "choose_template() returns the chosen template on a valid numbered choice" {
+    local template_base="${BATS_TEST_TMPDIR}/templates"
+    create_templates "$template_base" "a.yaml" "b.yaml" "c.yaml"
+
+    run --separate-stderr choose_template <<< "3"
+    assert_success
+    assert_stderr_line "Found 3 templates at \"$template_base\":"
+    assert_stderr_line "1: a.yaml"
+    assert_stderr_line "2: b.yaml"
+    assert_stderr_line "3: c.yaml"
+    assert_output "$template_base/c.yaml"
 }
 
 # bats test_tags=main
