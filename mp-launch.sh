@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
-# set -x # debug
-
 set -euo pipefail
 
-# Absolute path of directory containing the executed script
-# https://stackoverflow.com/questions/39340169/dir-cd-dirname-bash-source0-pwd-how-does-that-work
-launch_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks (e.g. ~/.local/bin/mp-launch) to the real script path,
+# so that all runtime paths stay anchored to the project directory and not to the link
+# 'readlink -f' canonicalizes the whole chain in one call (e.g., resolves chained symlinks and an absolute path of the source)
+launch_script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 readonly launch_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
 
 readonly vms_base="${launch_script_dir}/vms"    # root directory for per-vm directories

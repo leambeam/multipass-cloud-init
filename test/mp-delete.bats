@@ -169,3 +169,19 @@ create_vm_dir() {
 	assert_stderr_line --regexp "^Usage with a single VM: [[:alnum:]/_.-]+ <vm-name>\.$"
 	assert_stderr_line --regexp "^Usage with multiple VMs: [[:alnum:]/_.-]+ <vm-name-1> <vm-name-2> <vm-name-3>\.$"
 }
+
+# bats test_tags=script_dir
+@test "mp-delete.sh resolves to the project directory when sourced via an absolute symlink" {
+	local bin_dir="${BATS_TEST_TMPDIR}/bin"
+	local expected_dir
+
+	mkdir -p "$bin_dir"
+	ln -s "${PROJECT_ROOT}/mp-delete.sh" "${bin_dir}/mp-delete"
+	expected_dir="$(cd -P "${PROJECT_ROOT}" &>/dev/null && pwd -P)"
+
+	# Source the symlink in a fresh shell (this shell already holds a readonly delete_script_dir) so the resolution runs against the link path
+	# 'dummy-shell' is the inner shell's $0 — it must differ from the link path (to skip delete()) and $1 carries the link for 'source'
+	run bash -c 'source "$1"; printf "%s\n" "$delete_script_dir"' dummy-shell "${bin_dir}/mp-delete"
+	assert_success
+	assert_output "$expected_dir"
+}

@@ -371,3 +371,19 @@ setup() {
 		assert_stderr "Invalid VM name \"$input\": must start with a letter, end with a letter or digit, and contain only letters, digits, or hyphens in between (e.g., vm-111)."
 	done
 }
+
+# bats test_tags=script_dir
+@test "mp-launch.sh resolves to the project directory when sourced via an absolute symlink" {
+	local bin_dir="${BATS_TEST_TMPDIR}/bin"
+	local expected_dir
+
+	mkdir -p "$bin_dir"
+	ln -s "${PROJECT_ROOT}/mp-launch.sh" "${bin_dir}/mp-launch"
+	expected_dir="$(cd -P "${PROJECT_ROOT}" &>/dev/null && pwd -P)"
+
+	# Source the symlink in a fresh shell (this shell already holds a readonly launch_script_dir) so the resolution runs against the link path
+	# 'dummy-shell' is the inner shell's $0 — it must differ from the link path (to skip main()) and $1 carries the link for 'source'
+	run bash -c 'source "$1"; printf "%s\n" "$launch_script_dir"' dummy-shell "${bin_dir}/mp-launch"
+	assert_success
+	assert_output "$expected_dir"
+}
