@@ -173,7 +173,7 @@ ask_image() {
 		esac
 
 		# 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
-		if [[ $(multipass find "$selected_ubuntu_image" --only-images) != *"No images"* ]]; then
+		if [[ $(multipass find "$selected_ubuntu_image") != *"No images"* ]]; then
 			echo "$selected_ubuntu_image"
 			return 0
 		fi

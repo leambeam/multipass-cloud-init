@@ -3,12 +3,12 @@
 
 stub_multipass_find_present() {
 	local image=$1
-	stub multipass "find ${image} --only-images : echo '$image'; exit 0"
+	stub multipass "find ${image} : echo '$image'; exit 0"
 }
 
 stub_multipass_find_missing() {
 	local image=$1
-	stub multipass "find ${image} --only-images : echo 'No images found.'; exit 0"
+	stub multipass "find ${image} : echo 'No images found.'; exit 0"
 }
 
 stub_all_tools() {
