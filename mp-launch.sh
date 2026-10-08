@@ -154,8 +154,8 @@ ask_image() {
 			Choose Ubuntu image:
 			1) 22.04 LTS
 			2) 24.04 LTS
-			3) 25.10
-			4) 26.04 LTS
+			3) 26.04 LTS
+			4) daily:26.10
 		EOF
 
 		read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
@@ -163,8 +163,8 @@ ask_image() {
 		case "$image_choice" in
 		1) selected_ubuntu_image="22.04" ;;
 		2) selected_ubuntu_image="24.04" ;;
-		3) selected_ubuntu_image="25.10" ;;
-		4) selected_ubuntu_image="26.04" ;;
+		3) selected_ubuntu_image="26.04" ;;
+		4) selected_ubuntu_image="26.10" ;;
 		"") selected_ubuntu_image="$default_ubuntu_image" ;; # use default on empty input
 		*)
 			echo "Invalid choice: \"$image_choice\". Enter 1, 2, 3, or 4." >&2

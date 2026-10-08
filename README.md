@@ -82,7 +82,7 @@ The name must start with a letter, end with a letter or digit, and contain only 
 
 `mp-launch.sh` then asks, in order:
 
-1. **Ubuntu image**: numbered list (22.04 LTS, 24.04 LTS, 25.10, 26.04 LTS), default `26.04`. The prompt repeats if the image isn't found on Multipass.
+1. **Ubuntu image**: numbered list (22.04 LTS, 24.04 LTS, 26.04 LTS, daily:26.10), default `26.04`. The prompt repeats if the image isn't found on Multipass.
 2. **Disk space**: integer or decimal with an `M`/`G` suffix (e.g. `1000M`, `5G`, `5.5G`). Range `4G`–`40G`, default `5G`.
 3. **Memory**: same format as disk. Range `1G`–`4G`, default `1G`.
 4. **CPUs**: whole number `1`–`4`, default `1`.

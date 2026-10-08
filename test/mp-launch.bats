@@ -186,7 +186,7 @@ setup() {
 
 # bats test_tags=ask_image
 @test "ask_image() returns the correct image for each valid menu choice" {
-	local ubuntu_images=("22.04" "24.04" "25.10" "26.04")
+	local ubuntu_images=("22.04" "24.04" "26.04" "26.10")
 	local counter=0
 	for image in "${ubuntu_images[@]}"; do
 		counter=$((counter + 1))
