@@ -1,7 +1,7 @@
 name: Lint
 on:
   push:
-    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash']
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'completions/*.bash']
   workflow_dispatch:
 
 jobs:
