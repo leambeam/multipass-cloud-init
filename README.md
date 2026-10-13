@@ -98,6 +98,97 @@ mp-delete <name-1> <name-2> <name-3>
 
 `mp-delete.sh` prompts only when a VM isn't found on Multipass.
 
+## Tab completion for `mp-delete` (symlink installation only)
+
+These instructions assume you created the `mp-delete` symlink above and that it is on your `PATH`.
+
+### Zsh
+
+1. Create a directory to store custom autocompletions:
+
+   ```bash
+   mkdir -p ~/.config/zsh/completions/
+   ```
+
+   Alternatively, if you use `Oh My Zsh`, you can store the completion file in `~/.oh-my-zsh/custom/completions`. This directory is already on [`$fpath`](https://zsh.sourceforge.io/Doc/Release/Parameters.html#index-fpath).
+
+2. Copy the autocomplete file into your completions directory. If you use the Oh My Zsh directory, change the destination in this command to that directory:
+
+   ```bash
+   cp ~/scripts/multipass-cloud-init/completions/_mp_delete ~/.config/zsh/completions/_mp_delete
+   ```
+
+   **Note:** If you use the Oh My Zsh directory, skip steps 3 and 4. Oh My Zsh's startup script runs `compinit`, so you do not need a separate `compinit` line in `.zshrc`.
+
+3. Add the `completions` directory to the `$fpath`:
+
+   ```bash
+   nano ~/.zshrc
+   ```
+
+   **Note:** `fpath` is an **array**. `typeset -gU fpath` removes duplicates.
+
+   ```bash
+   fpath=(~/.config/zsh/completions $fpath)
+   typeset -gU fpath
+   ```
+
+4. If you do not yet have it, add the `autoload` and `compinit` lines:
+
+   ```bash
+   autoload -Uz compinit; compinit
+   ```
+
+5. Source `~/.zshrc`, check the `$fpath`, and test the autocomplete:
+
+   ```bash
+   source ~/.zshrc
+   ```
+
+   ```bash
+   echo $fpath | grep -o ".config/zsh/completions"
+   ```
+
+   ```bash
+   mp-delete <TAB>
+   ```
+
+   The suggestions include VMs known to Multipass and orphaned VM directories.
+
+### Bash
+
+You need to have [bash-completion](https://github.com/scop/bash-completion#installation) installed and enabled.
+
+1. Create a directory to store custom autocompletions:
+
+   ```bash
+   mkdir -p ~/.local/share/bash-completion/completions/
+   ```
+
+2. Copy the autocomplete file into your completions directory:
+
+   ```bash
+   cp ~/scripts/multipass-cloud-init/completions/mp-delete.bash ~/.local/share/bash-completion/completions/mp-delete.bash
+   ```
+
+3. Either open a new terminal or source the completion script directly into the current shell:
+
+   ```bash
+   source ~/.local/share/bash-completion/completions/mp-delete.bash
+   ```
+
+   The suggestions include VMs known to Multipass and orphaned VM directories.
+
+   ```bash
+   mp-delete <TAB>
+   ```
+
+Alternatively, add this line to `~/.bashrc` to load the completion in each new interactive Bash session:
+
+```bash
+source ~/scripts/multipass-cloud-init/completions/mp-delete.bash
+```
+
 ## Uninstall
 
 Removing the wrapper is just deleting the symlinks and the repo directory. The VMs themselves live in Multipass and are left untouched, so delete them first if you no longer need them (`mp-delete <name>` also purges the VM and its `~/.ssh/known_hosts` entries):
