@@ -1,0 +1,29 @@
+#compdef mp-delete
+
+_mp_delete(){
+	local -a candidates
+	local script_dir vms_dir
+
+	# Resolve the symlink
+	script_dir="$(dirname "$(readlink -f "$(command -v mp-delete)")")"
+	vms_dir="${script_dir}/vms"
+
+	# Local dirs under vms/ (covers VMs purged from multipass but have leftover configs)
+	candidates=("${vms_dir}"/*(N/:t))
+
+	# VMs running in multipass (may have no local dir)
+	if (( $+commands[multipass] )); then
+		candidates+=("${(@f)$(multipass list --format csv 2>/dev/null | awk -F, 'NR>1 {print $1}')}")
+	fi
+
+	# Dedupe the union of both sources
+	candidates=("${(@u)candidates}")
+
+	# Drop names already typed on the command line
+	local -a used=("${(@)words[2,CURRENT-1]}")
+	candidates=("${(@)candidates:|used}")
+
+	_describe 'VM name' candidates
+}
+
+_mp_delete "$@"

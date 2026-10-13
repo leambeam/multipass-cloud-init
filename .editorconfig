@@ -9,3 +9,7 @@ trim_trailing_whitespace = true
 [*.{sh,bash,bats}]
 indent_style = tab
 indent_size = 4
+
+[completions/*]
+indent_style = tab
+indent_size = 4
