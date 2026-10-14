@@ -58,9 +58,11 @@ delete() {
 
 # Do not call the delete() function if this script is sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	usage="$0"
+	[[ -h "$0" ]] && usage="$(basename -- "$0")"
 	if (($# < 1)); then
-		echo "Usage with a single VM: $0 <vm-name>." >&2
-		echo "Usage with multiple VMs: $0 <vm-name-1> <vm-name-2> <vm-name-3>." >&2
+		echo "Usage with a single VM: $usage <vm-name>." >&2
+		echo "Usage with multiple VMs: $usage <vm-name-1> <vm-name-2> <vm-name-3>." >&2
 		exit 1
 	fi
 

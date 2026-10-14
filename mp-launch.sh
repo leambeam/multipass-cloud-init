@@ -280,8 +280,10 @@ append_cloud_init() {
 }
 
 main() {
+	local usage="$0"
+	[[ -h "$0" ]] && usage="$(basename -- "$0")"
 	if [[ -z "$vm_name" ]]; then
-		die "Usage: $0 <vm-name>."
+		die "Usage: $usage <vm-name>."
 	# Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
 	# Name format per Multipass documentation: https://documentation.ubuntu.com/multipass/latest/reference/instance-name-format/
 	elif [[ ! $vm_name =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
