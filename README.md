@@ -211,6 +211,8 @@ rm -rf ~/scripts/multipass-cloud-init
 
 If you added the `Include` line to `~/.ssh/config`, remove that line too so it doesn't point at the deleted path.
 
+If you set up tab completion, undo only the changes you made for it: remove the completion file you copied (`~/.config/zsh/completions/_mp_delete`, `~/.oh-my-zsh/custom/completions/_mp_delete`, or `~/.local/share/bash-completion/completions/mp-delete.bash`) and remove the related lines you added to `~/.zshrc` or `~/.bashrc`. Do not remove pre-existing settings or shared completion setup that other completions use.
+
 ## Directory structure
 
 ```text
