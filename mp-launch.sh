@@ -334,7 +334,7 @@ main() {
 	append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
 	cat <<-EOF >"$ssh_config_path"
-		Host ${vm_name}
+		Host ${vm_name} ${vm_name}.local
 			HostName ${vm_name}.local
 			IdentityFile ${private_key_path}
 			User ubuntu
