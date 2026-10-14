@@ -27,6 +27,16 @@ vm_not_found() {
 delete() {
 	# Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
 	# interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
+	local answer
+	while true; do
+		read -r -p "Are you sure you want to delete \"$*\"? (y/n): " answer
+		case "$answer" in
+		y) break ;;
+		n) return 1 ;;
+		*) echo "Invalid choice: \"$answer\". Use either y or n." >&2 ;;
+		esac
+	done
+
 	for vm in "$@"; do
 		local vm_dir="${vms_base_dir}/${vm}"
 

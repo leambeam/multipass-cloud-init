@@ -19,6 +19,12 @@ create_vm_dir() {
 }
 
 # bats test_tags=delete
+@test "delete() returns failure when the delete prompt receives 'n'" {
+	run --separate-stderr delete vm-111 <<<'n'
+	assert_failure
+}
+
+# bats test_tags=delete
 @test "delete() removes one vm and its directory" {
 	local vm_name="vm-111"
 	local vms_base_dir="${BATS_TEST_TMPDIR}/vms"
@@ -31,7 +37,7 @@ create_vm_dir() {
 	stub_multipass_delete "$vm_name"
 	stub_ssh_keygen_rm "$vm_name"
 
-	run --separate-stderr delete "$vm_name"
+	run --separate-stderr delete "$vm_name" <<<'y'
 	assert_success
 	refute_stderr
 	assert_line "Deleting \"$vm_name\"..."
@@ -56,7 +62,7 @@ create_vm_dir() {
 		stub_ssh_keygen_rm "$vm"
 	done
 
-	run --separate-stderr delete "${vm_names[@]}"
+	run --separate-stderr delete "${vm_names[@]}" <<<'y'
 	assert_success
 	refute_stderr
 
@@ -71,7 +77,7 @@ create_vm_dir() {
 }
 
 # bats test_tags=delete
-@test "delete() removes directory when no vm is found and vm_not_found() receives 'y' input" {
+@test "delete() removes directory when both prompts receive 'y'" {
 	local vm_name="vm-111"
 	local vms_base_dir="${BATS_TEST_TMPDIR}/vms"
 	local vm_dir="${vms_base_dir}/${vm_name}"
@@ -82,7 +88,7 @@ create_vm_dir() {
 	stub_multipass_info_missing "$vm_name"
 	stub_ssh_keygen_rm "$vm_name"
 
-	run --separate-stderr delete "$vm_name" <<<'y'
+	run --separate-stderr delete "$vm_name" <<<$'y\ny'
 	assert_success
 	refute_stderr
 	refute_line "Deleting \"$vm_name\"..."
@@ -94,7 +100,7 @@ create_vm_dir() {
 }
 
 # bats test_tags=delete
-@test "delete() keeps directory when no vm is found and vm_not_found() receives 'n' input" {
+@test "delete() keeps directory when only the delete prompt receives 'y'" {
 	local vm_name="vm-111"
 	local vms_base_dir="${BATS_TEST_TMPDIR}/vms"
 	local vm_dir="${vms_base_dir}/${vm_name}"
@@ -104,7 +110,7 @@ create_vm_dir() {
 
 	stub_multipass_info_missing "$vm_name"
 
-	run --separate-stderr delete "$vm_name" <<<'n'
+	run --separate-stderr delete "$vm_name" <<<$'y\nn'
 	assert_success
 	assert_exists "$vm_dir"
 	refute_stderr
@@ -126,7 +132,7 @@ create_vm_dir() {
 	stub_multipass_delete_fail "$vm_name"
 	stub_ssh_keygen_rm "$vm_name"
 
-	run --separate-stderr delete "$vm_name"
+	run --separate-stderr delete "$vm_name" <<<'y'
 	assert_success
 	assert_stderr "Failed to delete \"$vm_name\" from Multipass."
 	assert_line "Deleting \"$vm_name\"..."
@@ -150,7 +156,7 @@ create_vm_dir() {
 	stub_multipass_delete "$vm_name"
 	stub_ssh_keygen_rm_fail "$vm_name"
 
-	run --separate-stderr delete "$vm_name"
+	run --separate-stderr delete "$vm_name" <<<'y'
 	assert_success
 	assert_stderr "Failed to remove \"$vm_name\" from the known_hosts file."
 	assert_line "Deleting \"$vm_name\"..."

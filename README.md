@@ -96,7 +96,12 @@ Delete one or more VMs by passing their names:
 mp-delete <name-1> <name-2> <name-3>
 ```
 
-`mp-delete.sh` prompts only when a VM isn't found on Multipass.
+`mp-delete.sh` then asks, in order:
+
+1. **delete prompt**: `Are you sure you want to delete "<names>"? (y/n)`. `n` aborts without deleting anything. `y` proceeds.
+2. **vm_not_found prompt**: for each VM that isn't found on Multipass, `VM "<name>" not found on Multipass. Delete any associated local files? (y/n)`. `n` keeps the local files; `y` deletes them.
+
+Invalid answers re-prompt.
 
 ## Tab completion for `mp-delete` (symlink installation only)
 
