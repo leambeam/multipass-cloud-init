@@ -1,7 +1,7 @@
 name: Lint
 on:
   push:
-    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'completions/*.bash']
+    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/test_helper/*.bash', 'completions/*.bash']
   workflow_dispatch:
 
 jobs:
@@ -18,4 +18,6 @@ jobs:
             test/bats
             test/test_helper/bats-assert
             test/test_helper/bats-support
+            test/test_helper/bats-mock
+            test/test_helper/bats-file
           check_together: 'yes'

@@ -14,6 +14,7 @@ vms_base_dir="${delete_script_dir}/vms"
 vm_not_found() {
 	local vm=$1
 	local answer
+
 	while true; do
 		read -r -p "VM \"$vm\" not found on Multipass. Delete any associated local files? (y/n): " answer
 		case "$answer" in
@@ -25,9 +26,16 @@ vm_not_found() {
 }
 
 delete() {
-	# Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
-	# interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
+	local vm
 	local answer
+
+	for vm in "$@"; do
+		if [[ ! $vm =~ ^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
+			echo "Invalid VM name \"$vm\"." >&2
+			exit 1
+		fi
+	done
+
 	while true; do
 		read -r -p "Are you sure you want to delete \"$*\"? (y/n): " answer
 		case "$answer" in
@@ -37,6 +45,8 @@ delete() {
 		esac
 	done
 
+	# Cleanup steps in this function use `|| echo "..."` guardrail to report failures without
+	# interrupting the script (set -e) or skipping remaining VMs/steps. Exit code stays 0
 	for vm in "$@"; do
 		local vm_dir="${vms_base_dir}/${vm}"
 
@@ -59,7 +69,7 @@ delete() {
 # Do not call the delete() function if this script is sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 	usage="$0"
-	[[ -h "$0" ]] && usage="$(basename -- "$0")"
+	[[ -L "$0" ]] && usage="$(basename -- "$0")"
 	if (($# < 1)); then
 		echo "Usage with a single VM: $usage <vm-name>." >&2
 		echo "Usage with multiple VMs: $usage <vm-name-1> <vm-name-2> <vm-name-3>." >&2

@@ -28,6 +28,8 @@ The scripts target macOS and Linux. Windows is not supported.
     * `jq`
     * `bc`
 
+3. Bash 4.3 or newer. The scripts use `mapfile` (bash 4.0) and `[[ -v "arr[i]" ]]` (bash 4.3). [macOS ships 3.2.57](https://stackoverflow.com/questions/77052638/changing-default-shell-from-zsh-to-bash-on-macos-catalina-and-beyond), which is quite old. Install a newer bash (e.g., `brew install bash`) and make sure it comes before `/bin/bash` on your `PATH`, since the first match in `PATH` is what gets executed when you call `bash`.
+
 ## Installation with symlinks (recommended)
 
 Symlinks let you invoke the launch and delete scripts from anywhere in the terminal as you would any other command.
@@ -208,8 +210,8 @@ cp templates/cloud-init.yaml templates/my-template.yaml
 
 Keep all content from the copied file. Do not remove or change it. You can edit the commented-out lines. Add your own configs on top:
 
-* the `users` block for `ubuntu`, including its `ssh_authorized_keys: []` line. The script replaces that line with the generated public key. Keep the line inside the `ubuntu` block for key-based login to work.
-* the `avahi-daemon` package and its `systemctl enable` line. The script connects to `<name>.local` and writes that name into the ssh config, so mDNS must be running on the VM. Without it, the connection fails.
+* the `users` block for `ubuntu`, including its `ssh_authorized_keys: []` line. The script replaces the first `ssh_authorized_keys` line in the file with the generated public key. Keep `ubuntu` first in the file, before any other `users` blocks, or the key lands in the wrong account.
+* the `avahi-daemon` package and its `systemctl enable --now` line. The script connects to `<name>.local` and writes that name into the ssh config, so mDNS must be running on the VM. Without it, the connection fails.
 
 See the [cloud-init docs](https://cloudinit.readthedocs.io/) for the full range of directives you can add.
 
@@ -243,10 +245,10 @@ git submodule update --init --recursive
 Then run the suite from the root of the project:
 
 ```bash
-test/bats/bin/bats -p test/
+test/bats/bin/bats -p test
 ```
 
-You can run tests without Multipass installed. Use the `--filter-tags` flag to run a part of the suite, e.g. `test/bats/bin/bats -p test/ --filter-tags ask_size` to run tests only for the `ask_size` function.
+You can run tests without Multipass installed. Use the `--filter-tags` flag to run a part of the suite, e.g., `test/bats/bin/bats -p test --filter-tags ask_size` to run tests only for the `ask_size` function.
 
 ## Known issues
 

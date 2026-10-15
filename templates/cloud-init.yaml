@@ -16,4 +16,4 @@ packages:
 - apt: [avahi-daemon]
 
 runcmd:
-- [systemctl, enable, avahi-daemon]
+- [systemctl, enable, --now, avahi-daemon]

@@ -25,6 +25,15 @@ create_vm_dir() {
 }
 
 # bats test_tags=delete
+@test "delete() rejects an invalid vm name before prompting" {
+	local invalid_inputs=("vm-111" "vm-222" "vm-333" "file1/../../file2")
+
+	run --separate-stderr delete "${invalid_inputs[@]}" <<<'y'
+	assert_failure
+	assert_stderr 'Invalid VM name "file1/../../file2".'
+}
+
+# bats test_tags=delete
 @test "delete() removes one vm and its directory" {
 	local vm_name="vm-111"
 	local vms_base_dir="${BATS_TEST_TMPDIR}/vms"

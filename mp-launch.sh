@@ -35,7 +35,7 @@ readonly cpu_max_count=4                        # vCPUs
 
 # Minimum system requirements per Ubuntu docs converted to Binary (IEC) Units:
 # https://ubuntu.com/server/docs/reference/installation/system-requirements/
-# Note: Multipass defaults (512M disk, 128M RAM) are too low to boot any available Ubuntu image
+# Note: Multipass minimums (1G disk, 512M RAM) are too low to boot any available Ubuntu image
 readonly disk_min_gib=4                         # virtual disk
 readonly memory_min_gib=1                       # vRAM
 readonly cpu_min_count=1                        # vCPUs
@@ -116,18 +116,20 @@ choose_template() {
 		echo "${templates[0]}"
 		return 0
 	else
-		echo "Found ${#templates[@]} templates at \"$template_base\":" >&2
-		for i in "${!templates[@]}"; do
-			# echo template's number starting from one and its name
-			echo "$((i + 1)): $(basename "${templates[$i]}")" >&2
-		done
-
 		if [[ -f "$default_template_path" ]]; then
 			default_prompt=" (default: $default_template)"
 		fi
 
 		while true; do
+
+			echo "Found ${#templates[@]} templates at \"$template_base\":" >&2
+			for i in "${!templates[@]}"; do
+				# echo template's number starting from one and its name
+				echo "$((i + 1)): $(basename "${templates[$i]}")" >&2
+			done
+
 			read -r -p "Which template do you want to use${default_prompt}: " choice
+
 			if [[ -z "$choice" && -n "$default_prompt" ]]; then
 				echo "$default_template_path"
 				return 0
@@ -178,7 +180,6 @@ ask_image() {
 			return 0
 		else
 			echo "Invalid choice: \"$image_choice\". Enter a number from the list." >&2
-			continue
 		fi
 	done
 }
@@ -282,7 +283,7 @@ append_cloud_init() {
 
 main() {
 	local usage="$0"
-	[[ -h "$0" ]] && usage="$(basename -- "$0")"
+	[[ -L "$0" ]] && usage="$(basename -- "$0")"
 	if [[ -z "$vm_name" ]]; then
 		die "Usage: $usage <vm-name>."
 	# Reject invalid names early to avoid orphaned local files once 'multipass launch' fails on them
@@ -351,7 +352,7 @@ main() {
 
 	multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
-	readonly ssh_max_attempts=5
+	readonly ssh_max_attempts=10
 	local ssh_attempt
 	local current_vm_status
 	local current_vm_ip
@@ -359,12 +360,13 @@ main() {
 	for ((ssh_attempt = 1; ssh_attempt <= ssh_max_attempts; ssh_attempt++)); do
 		current_vm_status=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].state')
 		current_vm_ip=$(multipass info "$vm_name" --format json | jq -r --arg name "$vm_name" '.info[$name].ipv4[0]')
-		if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" ]]; then
+		if [[ "$current_vm_status" == "Running" && -n "$current_vm_ip" && "$current_vm_ip" != "null" ]]; then
 			# Uses IP instead of the hostname as 'ssh-keyscan' takes long time to fail on non-existing hostnames
 			if ssh-keyscan -T 1 "$current_vm_ip" &>/dev/null; then
 				# StrictHostKeyChecking=accept-new does an automatic entry to '~/.ssh/known_hosts'
-				ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"
-				exit 0
+				if ssh -i "$private_key_path" -o StrictHostKeyChecking=accept-new "ubuntu@$vm_name.local"; then
+					exit 0
+				fi
 			fi
 		fi
 		sleep 3
