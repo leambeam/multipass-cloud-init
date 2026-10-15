@@ -186,11 +186,12 @@ setup() {
 
 # bats test_tags=ask_image
 @test "ask_image() returns the correct image for each valid menu choice" {
-	local ubuntu_images=("22.04" "24.04" "26.04" "26.10")
+	local ubuntu_images=("22.04" "24.04" "26.04" "daily:26.10")
 	local counter=0
+	local image
 	for image in "${ubuntu_images[@]}"; do
 		counter=$((counter + 1))
-		stub_multipass_find_present "$image"
+		stub_multipass_find_list "${ubuntu_images[@]}"
 		run --separate-stderr ask_image <<<"$counter"
 		assert_success
 		assert_output "$image"
@@ -199,23 +200,11 @@ setup() {
 }
 
 # bats test_tags=ask_image
-@test "ask_image() re-prompts when multipass reports no matching image" {
-	stub_multipass_find_missing "22.04"
-	stub_multipass_find_present "24.04"
-
-	run --separate-stderr ask_image <<<$'1\n2'
-	assert_stderr_line 'Multipass could not find Ubuntu image "22.04". Choose another image.'
-	assert_success
-	assert_output "24.04"
-	unstub multipass
-}
-
-# bats test_tags=ask_image
 @test "ask_image() re-prompts with a warning on an invalid menu choice" {
-	stub_multipass_find_present "22.04"
+	stub_multipass_find_list "22.04"
 
 	run --separate-stderr ask_image <<<$'9\n1'
-	assert_stderr_line 'Invalid choice: "9". Enter 1, 2, 3, or 4.'
+	assert_stderr_line 'Invalid choice: "9". Enter a number from the list.'
 	assert_success
 	assert_output "22.04"
 	unstub multipass
@@ -223,11 +212,44 @@ setup() {
 
 # bats test_tags=ask_image
 @test "ask_image() returns the default image on empty input" {
-	stub_multipass_find_present "$default_ubuntu_image"
+	stub_multipass_find_list "$default_ubuntu_image"
 
 	run --separate-stderr ask_image <<<""
 	assert_success
 	assert_output "$default_ubuntu_image"
+	unstub multipass
+}
+
+# bats test_tags=ask_image
+@test "ask_image() re-prompts on empty input when the default is not in the list" {
+	stub_multipass_find_list "22.04"
+
+	run --separate-stderr ask_image <<<$'\n1'
+	assert_success
+	assert_output "22.04"
+	unstub multipass
+}
+
+# bats test_tags=ask_image
+@test "ask_image() shows the images listed by 'multipass find' in the menu" {
+	stub_multipass_find_list "22.04" "daily:26.10"
+
+	run --separate-stderr ask_image <<<"2"
+	assert_success
+	assert_output "daily:26.10"
+	assert_stderr_line "Choose Ubuntu image:"
+	assert_stderr_line "1: 22.04"
+	assert_stderr_line "2: daily:26.10"
+	unstub multipass
+}
+
+# bats test_tags=ask_image
+@test "ask_image() dies when 'multipass find' lists no images" {
+	stub_multipass_find_list
+
+	run --separate-stderr ask_image
+	assert_failure
+	assert_stderr "Failed to list Ubuntu images from 'multipass find'."
 	unstub multipass
 }
 

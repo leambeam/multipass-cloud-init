@@ -145,40 +145,41 @@ choose_template() {
 # Globals: default_ubuntu_image
 # Arguments: none
 ask_image() {
-	local selected_ubuntu_image
+	local ubuntu_images=()
 	local image_choice
+	local default_prompt=""
+	local i
+
+	mapfile -t ubuntu_images < <(multipass find --format json | jq -r '.images | keys[]')
+
+	if ((${#ubuntu_images[@]} == 0)); then
+		die "Failed to list Ubuntu images from 'multipass find'."
+	fi
+
+	# Only use default image if it can be found by 'multipass find'
+	if [[ " ${ubuntu_images[*]} " == *" $default_ubuntu_image "* ]]; then
+		default_prompt=" (default: $default_ubuntu_image)"
+	fi
 
 	while true; do
 
-		cat <<-EOF >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
-			Choose Ubuntu image:
-			1) 22.04 LTS
-			2) 24.04 LTS
-			3) 26.04 LTS
-			4) daily:26.10
-		EOF
+		echo "Choose Ubuntu image:" >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
+		for i in "${!ubuntu_images[@]}"; do
+			echo "$((i + 1)): ${ubuntu_images[$i]}" >&2
+		done
 
-		read -r -p "Which image do you want to use (default: $default_ubuntu_image): " image_choice
+		read -r -p "Which image do you want to use${default_prompt}: " image_choice
 
-		case "$image_choice" in
-		1) selected_ubuntu_image="22.04" ;;
-		2) selected_ubuntu_image="24.04" ;;
-		3) selected_ubuntu_image="26.04" ;;
-		4) selected_ubuntu_image="26.10" ;;
-		"") selected_ubuntu_image="$default_ubuntu_image" ;; # use default on empty input
-		*)
-			echo "Invalid choice: \"$image_choice\". Enter 1, 2, 3, or 4." >&2
-			continue
-			;;
-		esac
-
-		# 'multipass find' exits 0 even on failure (v1.16.3), so check output instead
-		if [[ $(multipass find "$selected_ubuntu_image") != *"No images"* ]]; then
-			echo "$selected_ubuntu_image"
+		if [[ -z "$image_choice" && -n "$default_prompt" ]]; then
+			echo "$default_ubuntu_image"
 			return 0
+		elif [[ "$image_choice" =~ ^[1-9][0-9]*$ && -v "ubuntu_images[image_choice - 1]" ]]; then
+			echo "${ubuntu_images[image_choice - 1]}"
+			return 0
+		else
+			echo "Invalid choice: \"$image_choice\". Enter a number from the list." >&2
+			continue
 		fi
-
-		echo "Multipass could not find Ubuntu image \"$selected_ubuntu_image\". Choose another image." >&2
 	done
 }
 

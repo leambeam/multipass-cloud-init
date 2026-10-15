@@ -1,14 +1,14 @@
 # Reusable stub builders
 # These functions emulate binaries and meant to be sourced into Bats tests
 
-stub_multipass_find_present() {
-	local image=$1
-	stub multipass "find ${image} : echo '$image'; exit 0"
-}
-
-stub_multipass_find_missing() {
-	local image=$1
-	stub multipass "find ${image} : echo 'No images found.'; exit 0"
+stub_multipass_find_list() {
+	# Emulates json format of 'multipass find' command
+	local json="{}"
+	local image
+	for image in "$@"; do
+		json=$(jq -cn --arg k "$image" --argjson o "$json" '$o + {$k: {}}')
+	done
+	stub multipass "find --format json : echo '{\"images\": $json}'"
 }
 
 stub_all_tools() {
