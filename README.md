@@ -15,6 +15,8 @@ Multipass injects its own key into every VM, but it is stored at a root-owned pa
 ## Requirements
 
 **Note:** The scripts are not POSIX compliant.
+The scripts target macOS and Linux. Windows is not supported.
+
 1. [Install Multipass](https://canonical.com/multipass/install)
 
 2. The scripts use a few CLI tools in addition to Multipass. Most of these ship by default on common distros. If any are missing, the script stops and tells you which ones to install:
@@ -62,8 +64,8 @@ Symlinks let you invoke the launch and delete scripts from anywhere in the termi
 Alternatively, clone the repo and run `mp-launch.sh` and `mp-delete.sh` from the project root, or invoke them from elsewhere by relative or absolute path. VM files remain in the project directory regardless of where you run the scripts.
 
 ```bash
-./mp-launch.sh
-bash mp-delete.sh
+./mp-launch.sh my-vm
+bash mp-launch.sh my-vm
 ```
 
 ## Usage
@@ -78,7 +80,9 @@ The name must start with a letter, end with a letter or digit, and contain only 
 
 Each VM's generated files are stored in `vms/<name>/`: a copy of the cloud-init template with the public key injected, an SSH config, and its private and public SSH keys.
 
-`mp-launch.sh` prompts for the Ubuntu image, disk, memory, CPU count, and a template if more than one is available. Defaults and resource limits are listed in [Settings](#settings). Press Enter to accept a displayed default.
+`mp-launch.sh` prompts for the Ubuntu image, disk, memory, and CPU count. It prompts for a template only if more than one is available. Defaults and resource limits are listed in [Settings](#settings). Press Enter to accept a displayed default.
+
+Disk and memory values accept whole or decimal numbers followed by `M` or `G`, such as `1000M` or `5.5G`.
 
 Delete one or more VMs by passing their names:
 
@@ -104,13 +108,13 @@ Both completion scripts suggest VMs known to Multipass and orphaned VM directori
 
    Alternatively, if you use `Oh My Zsh`, you can store the completion file in `~/.oh-my-zsh/custom/completions`. This directory is already on [`$fpath`](https://zsh.sourceforge.io/Doc/Release/Parameters.html#index-fpath).
 
-2. Copy the autocomplete file into your completions directory. If you use the Oh My Zsh directory, change the destination in this command to that directory:
+2. Copy the autocomplete file into your completions directory. If you use the `Oh My Zsh` directory, change the destination in this command to that directory:
 
    ```bash
    cp ~/scripts/multipass-cloud-init/completions/_mp_delete ~/.config/zsh/completions/_mp_delete
    ```
 
-   **Note:** If you use the Oh My Zsh directory, skip steps 3 and 4. Oh My Zsh's startup script runs `compinit`, so you do not need a separate `compinit` line in `.zshrc`.
+   **Note:** If you use the `Oh My Zsh` directory, skip steps 3 and 4. The `Oh My Zsh` startup script runs `compinit`, so you do not need a separate `compinit` line in `.zshrc`.
 
 3. Add the following to `~/.zshrc` to include the `completions` directory in the `$fpath`:
 
@@ -137,9 +141,9 @@ Both completion scripts suggest VMs known to Multipass and orphaned VM directori
    echo $fpath | grep -o ".config/zsh/completions"
    ```
 
-    ```bash
-    mp-delete <TAB>
-    ```
+   ```bash
+   mp-delete <TAB>
+   ```
 
 ### Bash
 
@@ -159,11 +163,11 @@ You need to have [bash-completion](https://github.com/scop/bash-completion#insta
 
 3. Either open a new terminal or source the completion script directly into the current shell:
 
-    ```bash
-    source ~/.local/share/bash-completion/completions/mp-delete.bash
-    ```
+   ```bash
+   source ~/.local/share/bash-completion/completions/mp-delete.bash
+   ```
 
-    ```bash
+   ```bash
    mp-delete <TAB>
    ```
 
@@ -192,7 +196,7 @@ source ~/scripts/multipass-cloud-init/completions/mp-delete.bash
 
 * If you set up tab completion, undo only the changes you made for it: remove the completion file you copied (`~/.config/zsh/completions/_mp_delete`, `~/.oh-my-zsh/custom/completions/_mp_delete`, or `~/.local/share/bash-completion/completions/mp-delete.bash`) and remove the related lines you added to `~/.zshrc` or `~/.bashrc`. Do not remove pre-existing settings or shared completion setup that other completions use.
 
-* [Uninstall Multipass](https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/#uninstall), if you no longer need it.
+* [Uninstall Multipass](https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/#uninstall) if you no longer need it.
 
 ## Custom cloud-init templates
 
@@ -202,10 +206,9 @@ The launch script auto-discovers every `.yaml` and `.yml` file in `templates/`. 
 cp templates/cloud-init.yaml templates/my-template.yaml
 ```
 
-Everything in the copied file is required. Do not remove or change any of it (apart from the commented out parts). Add your own configs on top of it instead:
+Keep all content from the copied file. Do not remove or change it. You can edit the commented-out lines. Add your own configs on top:
 
-* the `ssh_authorized_keys: []` line. The script replaces its contents with the generated public key. Without this line, key injection fails and you will not be able to log in with a private key generated by the script.
-* the `ubuntu` user. The script adds the generated key to this user via the `users: - name: ubuntu` block, scoping it to `ubuntu`.
+* the `users` block for `ubuntu`, including its `ssh_authorized_keys: []` line. The script replaces that line with the generated public key. Keep the line inside the `ubuntu` block for key-based login to work.
 * the `avahi-daemon` package and its `systemctl enable` line. The script connects to `<name>.local` and writes that name into the ssh config, so mDNS must be running on the VM. Without it, the connection fails.
 
 See the [cloud-init docs](https://cloudinit.readthedocs.io/) for the full range of directives you can add.
@@ -227,7 +230,7 @@ To customize launch behavior, edit the `readonly` variables at the top of `mp-la
 | `ssh_key_name` | `id_ed25519` | filename of the generated key pair |
 | `default_template` | `cloud-init.yaml` | default template when several exist |
 
-When tweaking resource limits, it is generally better to raise values than to lower them. The minimum values (`disk_min_gib` and `memory_min_gib`) match the [Ubuntu server system requirements](https://ubuntu.com/server/docs/reference/installation/system-requirements/) and should stay unchanged: Multipass allows lower values ([its defaults are 512M disk and 128M RAM](https://canonical.com/multipass/docs/latest/reference/command-line-interface/launch/)), but some of the images won't boot with them. The CPU minimum (`cpu_min_count`) stays at `1`, since fewer than one CPU is not a valid allocation.
+When tweaking resource limits, it is generally better to raise values than to lower them. The minimums (`disk_min_gib` and `memory_min_gib`) match the [Ubuntu Server cloud-image system requirements](https://ubuntu.com/server/docs/reference/installation/system-requirements/) and should stay unchanged. Multipass allows lower values (its CLI minimums are `1G` disk and `512M` memory), but those are too low to boot any of the Ubuntu images offered by the Multipass. The CPU minimum (`cpu_min_count`) stays at `1`, since fewer than one CPU is not a valid allocation.
 
 ## Tests
 
@@ -247,13 +250,13 @@ You can run tests without Multipass installed. Use the `--filter-tags` flag to r
 
 ## Known issues
 
-### `.local` names resolve only over IPv6 (Linux hosts)
+### IPv4 resolution of `.local` names fails on Linux hosts
 
-Reproduced on Ubuntu, where `.local` names of Multipass VMs resolve only over IPv6. With `mdns4_minimal` in `nsswitch.conf`, `ping`, `ssh`, and `getent` fail (exit 2), and `avahi-resolve -4` times out. With `mdns_minimal` they work, but only over IPv6.
+Reproduced on Ubuntu: with `mdns4_minimal` in `nsswitch.conf`, `.local` names of Multipass VMs fail to resolve over IPv4. `ping`, `ssh`, and `getent` fail (exit 2), and `avahi-resolve -4` times out. With `mdns_minimal`, the names resolve, but only over IPv6.
 
 **Reason:** Multipass's own NAT rules intercept bridged IPv4 mDNS traffic. Multipass loads `br_netfilter`, so bridged frames pass through iptables (`bridge-nf-call-iptables=1`). Its `MASQUERADE` rule for the VM subnet matches mDNS replies sent to `224.0.0.251` (an address outside the subnet), rewriting them to the bridge's address with a random source port. Avahi rejects it as an "invalid source port". IPv6 is unaffected because Multipass sets up no IPv6 NAT rules. macOS hosts are unaffected because Multipass on macOS does not use this iptables/`br_netfilter` NAT path.
 
-**Workaround:** the most non-intrusive workaround would be to switch from `mdns4_minimal` (IPv4 only) to `mdns_minimal` (IPv4 + IPv6).
+**Workaround:** The least intrusive option is to switch from `mdns4_minimal` (IPv4 only) to `mdns_minimal` (IPv4 and IPv6).
 
 ```bash
 sudo sed -i 's/mdns4_minimal/mdns_minimal/' /etc/nsswitch.conf
