@@ -28,11 +28,11 @@ Multipass injects its own key into every VM, but it is stored at a root-owned pa
 
 ## Installation with symlinks (recommended)
 
-Why symlinks? With this approach you can invoke the launch and delete scripts from anywhere in the terminal session as you would with any other command. Any artifacts generated during execution are stored in the project directory.
+Symlinks let you invoke the launch and delete scripts from anywhere in the terminal as you would any other command.
 
 1. Make directories for storing the whole project and for storing symlinks to the scripts:
 
-   **Note:** [Snap doesn't have access to hidden directories](https://documentation.ubuntu.com/security/security-features/privilege-restriction/snap-confinement/#interface-connections). Thus, you should use a non-hidden directory on Linux (e.g., `~/scripts`), while on Mac you can use a hidden one (e.g., `~/.scripts`).
+   **Note:** [Snap doesn't have access to hidden directories](https://documentation.ubuntu.com/security/security-features/privilege-restriction/snap-confinement/#interface-connections), so use a non-hidden directory on Linux (e.g., `~/scripts`). These instructions use `~/scripts` throughout. On macOS, if you prefer a hidden directory such as `~/.scripts`, replace every `~/scripts` reference in these instructions with `~/.scripts`.
 
    ```bash
    mkdir -p ~/scripts ~/.local/bin
@@ -53,17 +53,13 @@ Why symlinks? With this approach you can invoke the launch and delete scripts fr
    ln -s ~/scripts/multipass-cloud-init/mp-delete.sh ~/.local/bin/mp-delete
    ```
 
-5. Configure ssh to read the per-VM configs with an [Include directive](https://man.openbsd.org/ssh_config#Include) in your main `~/.ssh/config` (otherwise you would have to pass `-F <file>` on every command):
-
-   ```bash
-   nano ~/.ssh/config
-   ```
+5. Add an [Include directive](https://man.openbsd.org/ssh_config#Include) to your main `~/.ssh/config` so ssh reads the per-VM configs (otherwise you would have to pass `-F <file>` on every command):
 
    ```text
-   Include <absolute-path>/multipass-cloud-init/vms/*/config
+   Include ~/scripts/multipass-cloud-init/vms/*/config
    ```
 
-Alternatively, you can just clone the repo and run `mp-launch.sh` and `mp-delete.sh` from the root directory. You can also run them from other places (e.g., via relative or absolute paths). All paths and artifacts remain anchored to the project directory.
+Alternatively, clone the repo and run `mp-launch.sh` and `mp-delete.sh` from the project root, or invoke them from elsewhere by relative or absolute path. VM files remain in the project directory regardless of where you run the scripts.
 
 ```bash
 ./mp-launch.sh
@@ -80,15 +76,9 @@ mp-launch <name>
 
 The name must start with a letter, end with a letter or digit, and contain only letters, digits, and hyphens in between (e.g., `vm-111`). If the name or its directory under `vms/` is already taken, a random suffix is appended instead of failing.
 
-`mp-launch.sh` then asks, in order:
+Each VM's generated files are stored in `vms/<name>/`: a copy of the cloud-init template with the public key injected, an SSH config, and its private and public SSH keys.
 
-1. **Ubuntu image**: numbered list (22.04 LTS, 24.04 LTS, 26.04 LTS, daily:26.10), default `26.04`. The prompt repeats if the image isn't found on Multipass.
-2. **Disk space**: integer or decimal with an `M`/`G` suffix (e.g. `1000M`, `5G`, `5.5G`). Range `4G`–`40G`, default `5G`.
-3. **Memory**: same format as disk. Range `1G`–`4G`, default `1G`.
-4. **CPUs**: whole number `1`–`4`, default `1`.
-5. **Template**: only if `templates/` holds more than one `.yaml`/`.yml` file: numbered list, default `cloud-init.yaml` (only when that file exists). If exactly one template exists, it is auto-selected.
-
-Enter accepts the shown default. Invalid answers re-prompt.
+`mp-launch.sh` prompts for the Ubuntu image, disk, memory, CPU count, and a template if more than one is available. Defaults and resource limits are listed in [Settings](#settings). Press Enter to accept a displayed default.
 
 Delete one or more VMs by passing their names:
 
@@ -96,16 +86,13 @@ Delete one or more VMs by passing their names:
 mp-delete <name-1> <name-2> <name-3>
 ```
 
-`mp-delete.sh` then asks, in order:
-
-1. **delete prompt**: `Are you sure you want to delete "<names>"? (y/n)`. `n` aborts without deleting anything. `y` proceeds.
-2. **vm_not_found prompt**: for each VM that isn't found on Multipass, `VM "<name>" not found on Multipass. Delete any associated local files? (y/n)`. `n` keeps the local files; `y` deletes them.
-
-Invalid answers re-prompt.
+`mp-delete.sh` asks for confirmation before deleting. If a VM isn't found on Multipass, it asks whether to delete that VM's associated local files too.
 
 ## Tab completion for `mp-delete` (symlink installation only)
 
 These instructions assume you created the `mp-delete` symlink above and that it is on your `PATH`.
+
+Both completion scripts suggest VMs known to Multipass and orphaned VM directories.
 
 ### Zsh
 
@@ -125,11 +112,7 @@ These instructions assume you created the `mp-delete` symlink above and that it 
 
    **Note:** If you use the Oh My Zsh directory, skip steps 3 and 4. Oh My Zsh's startup script runs `compinit`, so you do not need a separate `compinit` line in `.zshrc`.
 
-3. Add the `completions` directory to the `$fpath`:
-
-   ```bash
-   nano ~/.zshrc
-   ```
+3. Add the following to `~/.zshrc` to include the `completions` directory in the `$fpath`:
 
    **Note:** `fpath` is an **array**. `typeset -gU fpath` removes duplicates.
 
@@ -154,11 +137,9 @@ These instructions assume you created the `mp-delete` symlink above and that it 
    echo $fpath | grep -o ".config/zsh/completions"
    ```
 
-   ```bash
-   mp-delete <TAB>
-   ```
-
-   The suggestions include VMs known to Multipass and orphaned VM directories.
+    ```bash
+    mp-delete <TAB>
+    ```
 
 ### Bash
 
@@ -178,13 +159,11 @@ You need to have [bash-completion](https://github.com/scop/bash-completion#insta
 
 3. Either open a new terminal or source the completion script directly into the current shell:
 
-   ```bash
-   source ~/.local/share/bash-completion/completions/mp-delete.bash
-   ```
+    ```bash
+    source ~/.local/share/bash-completion/completions/mp-delete.bash
+    ```
 
-   The suggestions include VMs known to Multipass and orphaned VM directories.
-
-   ```bash
+    ```bash
    mp-delete <TAB>
    ```
 
@@ -196,50 +175,24 @@ source ~/scripts/multipass-cloud-init/completions/mp-delete.bash
 
 ## Uninstall
 
-Removing the wrapper is just deleting the symlinks and the repo directory. The VMs themselves live in Multipass and are left untouched, so delete them first if you no longer need them (`mp-delete <name>` also purges the VM and its `~/.ssh/known_hosts` entries):
+* Removing the wrapper does not remove VMs from Multipass. If you no longer need them, delete them first:
 
-```bash
-mp-delete <name>
-```
+   ```bash
+   mp-delete <name>
+   ```
 
-Then remove the symlinks and the repo:
+* Then remove the symlinks and the repo:
 
-```bash
-rm ~/.local/bin/mp-launch ~/.local/bin/mp-delete
-rm -rf ~/scripts/multipass-cloud-init
-```
+   ```bash
+   rm ~/.local/bin/mp-launch ~/.local/bin/mp-delete
+   rm -rf ~/scripts/multipass-cloud-init
+   ```
 
-If you added the `Include` line to `~/.ssh/config`, remove that line too so it doesn't point at the deleted path.
+* If you added the `Include` line to `~/.ssh/config`, remove that line too so it doesn't point at the deleted path.
 
-If you set up tab completion, undo only the changes you made for it: remove the completion file you copied (`~/.config/zsh/completions/_mp_delete`, `~/.oh-my-zsh/custom/completions/_mp_delete`, or `~/.local/share/bash-completion/completions/mp-delete.bash`) and remove the related lines you added to `~/.zshrc` or `~/.bashrc`. Do not remove pre-existing settings or shared completion setup that other completions use.
+* If you set up tab completion, undo only the changes you made for it: remove the completion file you copied (`~/.config/zsh/completions/_mp_delete`, `~/.oh-my-zsh/custom/completions/_mp_delete`, or `~/.local/share/bash-completion/completions/mp-delete.bash`) and remove the related lines you added to `~/.zshrc` or `~/.bashrc`. Do not remove pre-existing settings or shared completion setup that other completions use.
 
-## Directory structure
-
-```text
-multipass-cloud-init/
-├── mp-launch.sh                # wrapper around 'multipass launch'
-├── mp-delete.sh                # wrapper around 'multipass delete --purge' and local cleanup
-├── templates/                  # cloud-init templates; auto-discovered by the launch script
-│   └── cloud-init.yaml
-├── vms/                        # created at launch time; one directory per VM
-│   └── <name>/
-│       ├── cloud-init.yaml     # copy of the template with the public key injected
-│       ├── config              # ssh config
-│       ├── id_ed25519          # per-VM private key
-│       └── id_ed25519.pub      # per-VM public key
-└── test/                       # Bats test suite
-    ├── common-setup.bash       # shared setup sourced by every test file
-    ├── mp-launch.bats          # tests for mp-launch.sh
-    ├── mp-delete.bats          # tests for mp-delete.sh
-    ├── bats/                   # Bats binary (git submodule)
-    └── test_helper/
-        ├── fixture-builders.bash   # fake filesystem fixtures for tests
-        ├── stub-builders.bash      # stub helpers (mock multipass, etc.)
-        ├── bats-assert/            # helper libs (git submodules)
-        ├── bats-file/
-        ├── bats-mock/
-        └── bats-support/
-```
+* [Uninstall Multipass](https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/#uninstall), if you no longer need it.
 
 ## Custom cloud-init templates
 
@@ -259,7 +212,7 @@ See the [cloud-init docs](https://cloudinit.readthedocs.io/) for the full range 
 
 ## Settings
 
-`readonly` defaults and limits live at the top of `mp-launch.sh`. Edit them there. The prompts show the new defaults and enforce the new limits.
+To customize launch behavior, edit the `readonly` variables at the top of `mp-launch.sh`. The table lists their current values.
 
 | Variable | Value | Meaning |
 | --- | --- | --- |
@@ -298,9 +251,7 @@ You can run tests without Multipass installed. Use the `--filter-tags` flag to r
 
 Reproduced on Ubuntu, where `.local` names of Multipass VMs resolve only over IPv6. With `mdns4_minimal` in `nsswitch.conf`, `ping`, `ssh`, and `getent` fail (exit 2), and `avahi-resolve -4` times out. With `mdns_minimal` they work, but only over IPv6.
 
-**Reason:** Multipass's own NAT rules intercept bridged IPv4 mDNS traffic. Multipass loads `br_netfilter`, so bridged frames pass through iptables (`bridge-nf-call-iptables=1`). Its `MASQUERADE` rule for the VM subnet matches mDNS replies sent to `224.0.0.251` (an address outside the subnet), rewriting them to the bridge's address with a random source port. Avahi rejects it as an "invalid source port". IPv6 is unaffected because Multipass sets up no IPv6 NAT rules.
-
-This is a Linux-host-only issue: the reason is the iptables/`br_netfilter` NAT path, which macOS Multipass does not use, so macOS hosts are unaffected.
+**Reason:** Multipass's own NAT rules intercept bridged IPv4 mDNS traffic. Multipass loads `br_netfilter`, so bridged frames pass through iptables (`bridge-nf-call-iptables=1`). Its `MASQUERADE` rule for the VM subnet matches mDNS replies sent to `224.0.0.251` (an address outside the subnet), rewriting them to the bridge's address with a random source port. Avahi rejects it as an "invalid source port". IPv6 is unaffected because Multipass sets up no IPv6 NAT rules. macOS hosts are unaffected because Multipass on macOS does not use this iptables/`br_netfilter` NAT path.
 
 **Workaround:** the most non-intrusive workaround would be to switch from `mdns4_minimal` (IPv4 only) to `mdns_minimal` (IPv4 + IPv6).
 
