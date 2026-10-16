@@ -1,7 +1,7 @@
 name: Test
 on:
   push:
-    paths: ['*.sh', '*.bash', 'test/*.sh', 'test/*.bash', 'test/test_helper/*.bash', 'test/*.bats']
+    paths: ['*.sh', 'test/*.bash', 'test/test_helper/*.bash', 'test/*.bats', 'templates/*']
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo to the runner
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
       - name: Run Bats
