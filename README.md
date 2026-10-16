@@ -250,6 +250,8 @@ test/bats/bin/bats -p test
 
 You can run tests without Multipass installed. Use the `--filter-tags` flag to run a part of the suite, e.g., `test/bats/bin/bats -p test --filter-tags ask_size` to run tests only for the `ask_size` function.
 
+The scripts in `helpers/` are manual dev utilities, not a part of the test suite.
+
 ## Known issues
 
 ### IPv4 resolution of `.local` names fails on Linux hosts
