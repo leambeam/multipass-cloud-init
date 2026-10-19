@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Launch vms with 4 currently avaliable images, choose default values for every prompt, and check the ssh connection
+# To run this script, comment out lines 372-374 in mp-launch.sh, and add 'exit 0' on line 375
 
 set -euo pipefail
 
