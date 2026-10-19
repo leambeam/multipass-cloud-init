@@ -106,41 +106,46 @@ choose_template() {
 	local default_prompt=""
 	local choice
 	local i
+	local selected
 
 	if ((${#templates[@]} == 0)); then
 		die "Failed to find any .yaml or .yml templates in the \"$template_base\" directory."
 	fi
 
 	if ((${#templates[@]} == 1)); then
-		echo "Only one template was found. Selecting it automatically." >&2
-		echo "${templates[0]}"
+		selected="${templates[0]}"
+		echo "Only one template was found: \"$(basename "$selected")\". Selecting it automatically." >&2
+		echo "$selected"
 		return 0
-	else
-		if [[ -f "$default_template_path" ]]; then
-			default_prompt=" (default: $default_template)"
+	fi
+
+	if [[ -f "$default_template_path" ]]; then
+		default_prompt=" (default: $default_template)"
+	fi
+
+	while true; do
+
+		echo "Found ${#templates[@]} templates at \"$template_base\":" >&2
+		for i in "${!templates[@]}"; do
+			# echo template's number starting from one and its name
+			echo "$((i + 1)): $(basename "${templates[$i]}")" >&2
+		done
+
+		read -r -p "Which template do you want to use${default_prompt}: " choice
+
+		if [[ -z "$choice" && -n "$default_prompt" ]]; then
+			selected="$default_template_path"
+		elif [[ "$choice" =~ ^[1-9][0-9]*$ && -v "templates[$choice - 1]" ]]; then
+			selected="${templates[$choice - 1]}"
+		else
+			echo "Invalid choice: \"$choice\". Enter a number from the list." >&2
+			continue
 		fi
 
-		while true; do
-
-			echo "Found ${#templates[@]} templates at \"$template_base\":" >&2
-			for i in "${!templates[@]}"; do
-				# echo template's number starting from one and its name
-				echo "$((i + 1)): $(basename "${templates[$i]}")" >&2
-			done
-
-			read -r -p "Which template do you want to use${default_prompt}: " choice
-
-			if [[ -z "$choice" && -n "$default_prompt" ]]; then
-				echo "$default_template_path"
-				return 0
-			elif [[ "$choice" =~ ^[1-9][0-9]*$ && -v "templates[$choice - 1]" ]]; then
-				echo "${templates[$choice - 1]}"
-				return 0
-			else
-				echo "Invalid choice: \"$choice\". Enter a number from the list." >&2
-			fi
-		done
-	fi
+		echo "Selected template: \"$(basename "$selected")\"." >&2
+		echo "$selected"
+		return 0
+	done
 }
 
 # Prompt for an image to use in the VM
@@ -332,7 +337,7 @@ main() {
 	mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
 	cp "$selected_template" "$generated_cloud_init_path" || die "Failed to copy template: \"$selected_template\"."
 
-	ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" || die "Failed to generate key pair at \"$private_key_path\"."
+	ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" &>/dev/null || die "Failed to generate key pair at \"$private_key_path\"."
 	append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
 	cat <<-EOF >"$ssh_config_path"
@@ -352,7 +357,7 @@ main() {
 
 	multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
 
-	readonly ssh_max_attempts=10
+	readonly ssh_max_attempts=5
 	local ssh_attempt
 	local current_vm_status
 	local current_vm_ip

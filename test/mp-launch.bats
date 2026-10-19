@@ -324,7 +324,7 @@ setup() {
 
 	run --separate-stderr choose_template
 	assert_success
-	assert_stderr "Only one template was found. Selecting it automatically."
+	assert_stderr "Only one template was found: \"a.yaml\". Selecting it automatically."
 	assert_output "$template_base/a.yaml"
 }
 
@@ -336,6 +336,7 @@ setup() {
 	run --separate-stderr choose_template <<<""
 	assert_success
 	assert_output "$template_base/cloud-init.yaml"
+	assert_stderr_line 'Selected template: "cloud-init.yaml".'
 }
 
 # bats test_tags=choose_template
@@ -372,6 +373,7 @@ setup() {
 	assert_stderr_line "1: a.yaml"
 	assert_stderr_line "2: b.yaml"
 	assert_stderr_line "3: c.yaml"
+	assert_stderr_line 'Selected template: "c.yaml".'
 	assert_output "$template_base/c.yaml"
 }
 
