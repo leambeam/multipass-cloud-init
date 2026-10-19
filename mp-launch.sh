@@ -156,14 +156,21 @@ ask_image() {
 	local image_choice
 	local default_prompt=""
 	local i
+	local images_json
 
-	mapfile -t ubuntu_images < <(multipass find --format json | jq -r '.images | keys[]')
+	# 'multipass find' will be replaced by 'multipass images' in future releases
+	if ! images_json=$(multipass images --format json 2>/dev/null); then
+		if ! images_json=$(multipass find --format json 2>/dev/null); then
+			die "Failed to list Ubuntu images from 'multipass images' or 'multipass find'."
+		fi
+	fi
+	mapfile -t ubuntu_images < <(jq -r '.images | keys[]' <<<"$images_json")
 
 	if ((${#ubuntu_images[@]} == 0)); then
-		die "Failed to list Ubuntu images from 'multipass find'."
+		die "Failed to list Ubuntu images from 'multipass images' or 'multipass find'."
 	fi
 
-	# Only use default image if it can be found by 'multipass find'
+	# Only use default image if it can be found in the list
 	if [[ " ${ubuntu_images[*]} " == *" $default_ubuntu_image "* ]]; then
 		default_prompt=" (default: $default_ubuntu_image)"
 	fi

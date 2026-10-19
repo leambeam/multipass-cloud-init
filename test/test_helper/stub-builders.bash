@@ -1,14 +1,22 @@
 # Reusable stub builders
 # These functions emulate binaries and meant to be sourced into Bats tests
 
-stub_multipass_find_list() {
-	# Emulates json format of 'multipass find' command
+# Builds the 'images' entry of the JSON output shared by the 'multipass images' and 'multipass find' commands
+_multipass_images_json() {
 	local json="{}"
 	local image
 	for image in "$@"; do
 		json=$(jq -cn --arg k "$image" --argjson o "$json" '$o + {$k: {}}')
 	done
-	stub multipass "find --format json : echo '{\"images\": $json}'"
+	echo "{\"images\": $json}"
+}
+
+stub_multipass_images_list() {
+	stub multipass "images --format json : echo '$(_multipass_images_json "$@")'"
+}
+
+stub_multipass_find_list() {
+	stub multipass "find --format json : echo '$(_multipass_images_json "$@")'"
 }
 
 stub_all_tools() {
