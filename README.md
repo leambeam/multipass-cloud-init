@@ -100,6 +100,8 @@ These instructions assume you created the `mp-delete` symlink above and that it 
 
 Both completion scripts suggest VMs known to Multipass and orphaned VM directories.
 
+**Note:** Both completion scripts use `awk` to parse the `multipass list` output, so tab completion requires `awk`.
+
 ### Zsh
 
 1. Create a directory to store custom autocompletions:

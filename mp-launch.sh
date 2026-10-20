@@ -291,6 +291,10 @@ append_cloud_init() {
 	public_key=$(<"$public_key_path")
 
 	sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
+
+	if ! grep -Fq "ssh_authorized_keys: [$public_key]" "$generated_cloud_init_path" 2>/dev/null; then
+		die "Failed to find an \"ssh_authorized_keys: [<key>]\" line to replace in \"$generated_cloud_init_path\". Fix your template."
+	fi
 }
 
 main() {
@@ -342,6 +346,8 @@ main() {
 	ssh_config_path="${vm_dir}/config"                    # path to the SSH config
 
 	mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
+	# If any of the commands following the trap will fail or the script will be interruped, remove the orphaned vm directory
+	trap '[[ -d $vm_dir ]] && rm -rf "$vm_dir"' SIGINT SIGTERM SIGQUIT SIGHUP EXIT
 	cp "$selected_template" "$generated_cloud_init_path" || die "Failed to copy template: \"$selected_template\"."
 
 	ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" &>/dev/null || die "Failed to generate key pair at \"$private_key_path\"."
@@ -350,7 +356,7 @@ main() {
 	cat <<-EOF >"$ssh_config_path"
 		Host ${vm_name} ${vm_name}.local
 			HostName ${vm_name}.local
-			IdentityFile ${private_key_path}
+			IdentityFile "${private_key_path}"
 			User ubuntu
 			Port 22
 	EOF
@@ -362,7 +368,14 @@ main() {
 	chmod 644 "${private_key_path}.pub"
 	chmod 644 "$generated_cloud_init_path"
 
-	multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"
+	if ! multipass launch "$ubuntu_image" --name "$vm_name" --disk "$disk_size" --memory "$memory_size" --cpus "$cpus" --cloud-init "$generated_cloud_init_path"; then
+		# Delete the vm on keyboard interrupt, as the launch was already initiated in the daemon
+		multipass delete "$vm_name" --purge &>/dev/null || true
+		die "Failed to launch \"$vm_name\" from image \"$ubuntu_image\"."
+	fi
+
+	# unset the trap after the vm was created
+	trap - SIGINT SIGTERM SIGQUIT SIGHUP EXIT
 
 	readonly ssh_max_attempts=5
 	local ssh_attempt
