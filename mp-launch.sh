@@ -355,10 +355,9 @@ main() {
 	ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" &>/dev/null || die "Failed to generate key pair at \"$private_key_path\"."
 	append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
-	# .local Host is used for TAB completion on Mac, as it is being suggested first
-	# As a side effect all hosts are duplicated (e.g., vm-1 and vm-1.local point to the same vm), you can remove either
+	# Host *.local is used for TAB completion on Mac, as it is being suggested first
 	cat <<-EOF >"$ssh_config_path"
-		Host ${vm_name} ${vm_name}.local
+		Host ${vm_name}.local
 			HostName ${vm_name}.local
 			IdentityFile "${private_key_path}"
 			User ubuntu
