@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Resolve symlinks (e.g. ~/.local/bin/mp-delete) to the real script path,
-# so that all runtime paths stay anchored to the project directory and not to the link
+# so that all runtime paths stay anchored to the source directory and not to the link
 # 'readlink -f' canonicalizes the whole chain in one call (e.g., resolves chained symlinks and an absolute path of the source)
 delete_script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 readonly delete_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)

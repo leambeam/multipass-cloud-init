@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Resolve symlinks (e.g. ~/.local/bin/mp-launch) to the real script path,
-# so that all runtime paths stay anchored to the project directory and not to the link
+# so that all runtime paths stay anchored to the source directory and not to the link
 # 'readlink -f' canonicalizes the whole chain in one call (e.g., resolves chained symlinks and an absolute path of the source)
 launch_script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 readonly launch_script_dir # Declare and assign separately to avoid masking return values (shellcheck SC2155)
@@ -177,7 +177,7 @@ ask_image() {
 
 	while true; do
 
-		echo "Choose Ubuntu image:" >&2 # redirect to stderr as stdout is captured by the caller: ubuntu_image=$(ask_image)
+		echo "Choose Ubuntu image:" >&2
 		for i in "${!ubuntu_images[@]}"; do
 			echo "$((i + 1)): ${ubuntu_images[$i]}" >&2
 		done
@@ -187,8 +187,8 @@ ask_image() {
 		if [[ -z "$image_choice" && -n "$default_prompt" ]]; then
 			echo "$default_ubuntu_image"
 			return 0
-		elif [[ "$image_choice" =~ ^[1-9][0-9]*$ && -v "ubuntu_images[image_choice - 1]" ]]; then
-			echo "${ubuntu_images[image_choice - 1]}"
+		elif [[ "$image_choice" =~ ^[1-9][0-9]*$ && -v "ubuntu_images[$image_choice - 1]" ]]; then
+			echo "${ubuntu_images[$image_choice - 1]}"
 			return 0
 		else
 			echo "Invalid choice: \"$image_choice\". Enter a number from the list." >&2
@@ -290,7 +290,7 @@ append_cloud_init() {
 	local public_key
 	public_key=$(<"$public_key_path")
 
-	sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path"
+	sed "${sed_flag[@]}" "1,/ssh_authorized_keys: \[.*\]/s|ssh_authorized_keys: \[.*\]|ssh_authorized_keys: [$public_key]|" "$generated_cloud_init_path" || return
 
 	if ! grep -Fq "ssh_authorized_keys: [$public_key]" "$generated_cloud_init_path" 2>/dev/null; then
 		die "Failed to find an \"ssh_authorized_keys: [<key>]\" line to replace in \"$generated_cloud_init_path\". Fix your template."
@@ -299,6 +299,8 @@ append_cloud_init() {
 
 main() {
 	local usage="$0"
+	local ubuntu_image disk_size memory_size cpus selected_template
+
 	[[ -L "$0" ]] && usage="$(basename -- "$0")"
 	if [[ -z "$vm_name" ]]; then
 		die "Usage: $usage <vm-name>."
@@ -342,17 +344,19 @@ main() {
 
 	vm_dir="${vms_base}/${vm_name}"                       # per-vm directory storing key pair, SSH config, and VM's generated cloud-init
 	private_key_path="${vm_dir}/${ssh_key_name}"          # path to the private key
-	generated_cloud_init_path="${vm_dir}/cloud-init.yaml" # path to the VM's generated cloud-init file
+	generated_cloud_init_path="${vm_dir}/cloud-init.yaml" # path to the VM's generated cloud-init file; fixed, independent of the chosen template
 	ssh_config_path="${vm_dir}/config"                    # path to the SSH config
 
 	mkdir "$vm_dir" || die "Failed to create directory: \"$vm_dir\"."
-	# If any of the commands following the trap will fail or the script will be interruped, remove the orphaned vm directory
+	# If any of the commands following the trap will fail or the script will be interrupted, remove the orphaned vm directory
 	trap '[[ -d $vm_dir ]] && rm -rf "$vm_dir"' SIGINT SIGTERM SIGQUIT SIGHUP EXIT
 	cp "$selected_template" "$generated_cloud_init_path" || die "Failed to copy template: \"$selected_template\"."
 
 	ssh-keygen -t "$ssh_key_type" -f "$private_key_path" -N "" &>/dev/null || die "Failed to generate key pair at \"$private_key_path\"."
 	append_cloud_init "$private_key_path" || die "Failed to insert public key into cloud-init file: \"$generated_cloud_init_path\"."
 
+	# .local Host is used for TAB completion on Mac, as it is being suggested first
+	# As a side effect all hosts are duplicated (e.g., vm-1 and vm-1.local point to the same vm), you can remove either
 	cat <<-EOF >"$ssh_config_path"
 		Host ${vm_name} ${vm_name}.local
 			HostName ${vm_name}.local
@@ -402,5 +406,5 @@ main() {
 
 # Do not call the main() function if this script is sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-	main "$@"
+	main
 fi
