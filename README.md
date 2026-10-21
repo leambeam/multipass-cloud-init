@@ -223,7 +223,7 @@ To customize launch behavior, edit the `readonly` variables at the top of `mp-la
 
 | Variable | Value | Meaning |
 | --- | --- | --- |
-| `default_ubuntu_image` | `26.04` | default answer for the image prompt |
+| `default_ubuntu_image` | `26.04` | default image |
 | `default_disk_size` | `5G` | default virtual disk size |
 | `default_memory_size` | `1G` | default vRAM size |
 | `default_cpu_count` | `1` | default vCPU count |
@@ -232,13 +232,13 @@ To customize launch behavior, edit the `readonly` variables at the top of `mp-la
 | `cpu_min_count` / `cpu_max_count` | `1` / `4` | accepted vCPU range |
 | `ssh_key_type` | `ed25519` | key type generated per VM |
 | `ssh_key_name` | `id_ed25519` | filename of the generated key pair |
-| `default_template` | `cloud-init.yaml` | default template when several exist |
+| `default_template` | `cloud-init.yaml` | default template |
 
 When tweaking resource limits, it is generally better to raise values than to lower them. The minimums (`disk_min_gib` and `memory_min_gib`) match the [Ubuntu Server cloud-image system requirements](https://ubuntu.com/server/docs/reference/installation/system-requirements/) and should stay unchanged. Multipass allows lower values (its CLI minimums are `1G` disk and `512M` memory), but those are too low to boot any of the Ubuntu images offered by the Multipass. The CPU minimum (`cpu_min_count`) stays at `1`, since fewer than one CPU is not a valid allocation.
 
 ## Tests
 
-Bats and its helper libraries are git submodules vendored under `test/`, so a fresh clone needs them initialized first:
+[Bats](https://bats-core.readthedocs.io/en/stable/) and its helper libraries are git submodules vendored under `test/`, so a fresh clone needs them initialized first:
 
 ```bash
 git submodule update --init --recursive
@@ -252,7 +252,7 @@ test/bats/bin/bats -p test
 
 You can run tests without Multipass installed. Use the `--filter-tags` flag to run a part of the suite, e.g., `test/bats/bin/bats -p test --filter-tags ask_size` to run tests only for the `ask_size` function.
 
-The scripts in `helpers/` are manual dev utilities, not a part of the test suite.
+There are also dev test utilities in `helpers/` you can use.
 
 ## Known issues
 
